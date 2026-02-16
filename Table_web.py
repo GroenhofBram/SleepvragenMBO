@@ -6,7 +6,7 @@ import io
 # --- TableImage class (same as yours) ---
 class TableImage:
     def __init__(self, rows, cols, col_width, row_height,
-                 font_path="verdanab.ttf", bold_font_path="verdanab.ttf",
+                 font_path="verdana.ttf", bold_font_path="verdanab.ttf",
                  font_size=10, line_color=(0, 0, 0), bg_color=(255, 255, 255),
                  line_width=2, wrap_width=30):
         self.rows = rows
@@ -140,7 +140,6 @@ if st.button("Generate Table Image"):
     st.download_button(
         label="Download Table Image",
         data=byte_im,
-        file_name="table.pngg",
+        file_name="table.png",
         mime="image/png"
     )
-
