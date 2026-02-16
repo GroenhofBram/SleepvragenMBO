@@ -134,12 +134,12 @@ if st.button("Generate Table Image"):
 
     # Convert to bytes for download
     buf = io.BytesIO()
-    img.save(buf, format="JPEG")
+    img.save(buf, format="PNG")
     byte_im = buf.getvalue()
 
     st.download_button(
         label="Download Table Image",
         data=byte_im,
-        file_name="table.jpg",
-        mime="image/jpeg"
+        file_name="table.pngg",
+        mime="image/png"
     )
