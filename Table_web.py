@@ -2,13 +2,14 @@ import streamlit as st
 from PIL import Image, ImageDraw, ImageFont
 import textwrap
 import io
+import os   # ⭐ ADDED
 
-# --- TableImage class (same as yours) ---
 class TableImage:
     def __init__(self, rows, cols, col_width, row_height,
                  font_path="verdana.ttf", bold_font_path="verdanab.ttf",
                  font_size=10, line_color=(0, 0, 0), bg_color=(255, 255, 255),
                  line_width=2, wrap_width=30):
+
         self.rows = rows
         self.cols = cols
         self.col_width = col_width
@@ -25,8 +26,11 @@ class TableImage:
         self.height = sum(self.row_height)
         self.width = cols * col_width
 
-        self.font_path = font_path
-        self.bold_font_path = bold_font_path
+        # ⭐ FIX: make font paths deployment-safe
+        BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+        self.font_path = os.path.join(BASE_DIR, font_path)
+        self.bold_font_path = os.path.join(BASE_DIR, bold_font_path)
+
         self.font_size = font_size
 
         self.cells = {}
@@ -61,13 +65,17 @@ class TableImage:
 
             bold = self.bold_cells.get((r, c), False)
             font_path = self.bold_font_path if bold else self.font_path
+
             try:
                 font = ImageFont.truetype(font_path, self.font_size)
             except OSError:
                 font = ImageFont.load_default()
 
             lines = textwrap.wrap(text, width=self.wrap_width)
-            line_heights = [draw.textbbox((0, 0), line, font=font)[3] - draw.textbbox((0, 0), line, font=font)[1] for line in lines]
+            line_heights = [
+                draw.textbbox((0, 0), line, font=font)[3] - draw.textbbox((0, 0), line, font=font)[1]
+                for line in lines
+            ]
             total_text_height = sum(line_heights)
 
             current_y = y + (y_positions[r + 1] - y - total_text_height) / 2
