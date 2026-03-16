@@ -29,7 +29,6 @@ class TableImage:
         self.wrap_width = wrap_width
         self.padding_left = int(padding_left)
 
-        # Normalize row_height to a list of heights (one per row)
         if isinstance(row_height, list):
             if len(row_height) != self.rows:
                 if len(row_height) < self.rows:
@@ -63,12 +62,12 @@ class TableImage:
         img = Image.new("RGB", (self.width, self.height), self.bg_color)
         draw = ImageDraw.Draw(img)
 
-        # Pre-compute y positions
+        
         y_positions = [0]
         for h in self.row_height:
             y_positions.append(y_positions[-1] + int(h))
 
-        # Draw cell borders; inset by half the line width to avoid clipping
+        
         inset = max(0, self.line_width // 2)
         for r in range(self.rows):
             y0 = y_positions[r]
@@ -82,7 +81,7 @@ class TableImage:
                     width=self.line_width,
                 )
 
-        # Draw text for each cell
+        # text
         for (r, c), text in self.cells.items():
             x = int(c * self.col_width)
             y = y_positions[r]
@@ -101,7 +100,7 @@ class TableImage:
                 ascent, descent = font.getmetrics()
                 line_height = ascent + descent
             except Exception:
-                # fallback: measure first line or approximate
+                # fallback: mmeasure fiirst line 
                 if lines:
                     try:
                         bbox = draw.textbbox((0, 0), lines[0], font=font)
@@ -114,7 +113,7 @@ class TableImage:
 
             cell_height = y_positions[r + 1] - y_positions[r]
             total_text_height = len(lines) * line_height
-            # center the whole block vertically in the cell
+            # center vertically
             block_top = y + (cell_height - total_text_height) / 2
 
             current_y = block_top
@@ -126,7 +125,6 @@ class TableImage:
 
     def save(self, filename):
         img = self.draw()
-        # infer format from extension
         ext = os.path.splitext(filename)[1].lower()
         fmt = "PNG" if ext == ".png" else "JPEG"
         img.save(filename, fmt)
