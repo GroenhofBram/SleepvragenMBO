@@ -22,7 +22,6 @@ class TableImage:
             self.row_height = [row_height] * rows
         self.height = sum(self.row_height)
         self.width = cols * col_width
-        
         try:
             BASE_DIR = os.path.dirname(os.path.abspath(__file__))
         except NameError:
@@ -40,13 +39,9 @@ class TableImage:
     def draw(self):
         img = Image.new("RGB", (self.width, self.height), self.bg_color)
         draw = ImageDraw.Draw(img)
-
-        # Pre-compute y positions
         y_positions = [0]
         for h in self.row_height:
             y_positions.append(y_positions[-1] + h)
-
-        # Draw a rectangle for every cell to ensure all grid lines (internal + outer) are present
         for r in range(self.rows):
             y0 = y_positions[r]
             y1 = y_positions[r + 1] - 1  # keep inside image bounds
@@ -65,7 +60,6 @@ class TableImage:
                 font = ImageFont.truetype(font_path, self.font_size)
             except OSError:
                 font = ImageFont.load_default()
-
             lines = textwrap.wrap(text, width=self.wrap_width) if text else []
             # compute line heights using textbbox if available
             line_heights = []
@@ -91,30 +85,32 @@ class TableImage:
         img = self.draw()
         img.save(filename, "JPEG")
 
-
 # --- Streamlit app ---
 st.title("Table Image Generator")
 table_type = st.selectbox(
     "Select table type",
     ("Type 1 (graphic gapmatch)", "Type 2 (graphic gapmatch categorize)")
 )
+
 if table_type.startswith("Type 1"):
-    rows = st.number_input("Number of rows", min_value=1, value=2)
-    cols = st.number_input("Number of columns", min_value=1, value=2)
+    rows = st.number_input("Number of rows", min_value=1, value=2, step=1)
+    cols = st.number_input("Number of columns (1-5)", min_value=1, max_value=5, value=2, step=1)
     row_height = st.number_input("Row height (pixels)", min_value=10, value=50)
-    col_width = st.number_input("Column width (pixels)", min_value=10, value=100)
+    col_width = int(450 / cols)
+    st.write(f"Column width automatically set to {col_width} px")
     row_heights = row_height
 else:
     rows = 2
     cols = 2
-    col_width = 225
+    # keep same mapping for type 2 (cols fixed at 2)
+    col_width = int(450 / cols)
+    st.write(f"Column width automatically set to {col_width} px")
     row_heights = []
     for i in range(rows):
         h = st.number_input(f"Height of row {i+1} (pixels)", min_value=10, value=100)
         row_heights.append(h)
     bold_choice = st.checkbox("Make all text bold?")
 
-# Create TableImage object
 table = TableImage(
     rows=rows,
     cols=cols,
@@ -125,7 +121,6 @@ table = TableImage(
     wrap_width=29
 )
 
-# Input for each cell
 st.subheader("Enter cell text")
 for r in range(rows):
     for c in range(cols):
@@ -140,7 +135,6 @@ for r in range(rows):
 if st.button("Generate Table Image"):
     img = table.draw()
     st.image(img, caption="Generated Table", use_column_width=True)
-    # Convert to bytes for download
     buf = io.BytesIO()
     img.save(buf, format="JPEG")
     byte_im = buf.getvalue()
