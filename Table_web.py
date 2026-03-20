@@ -72,7 +72,6 @@ class TableImage:
                     outline=self.line_color,
                     width=self.line_width,
                 )
-        
         for (r, c), text in self.cells.items():
             x = int(c * self.col_width)
             y = y_positions[r]
@@ -83,7 +82,6 @@ class TableImage:
             except Exception:
                 font = ImageFont.load_default()
             lines = textwrap.wrap(text, width=self.wrap_width) if text else []
-            
             try:
                 ascent, descent = font.getmetrics()
                 line_height = ascent + descent
@@ -99,7 +97,6 @@ class TableImage:
                     line_height = getattr(font, "size", 12)
             cell_height = y_positions[r + 1] - y_positions[r]
             total_text_height = len(lines) * line_height
-            
             block_top = y + (cell_height - total_text_height) / 2
             current_y = block_top
             for line in lines:
@@ -113,8 +110,7 @@ class TableImage:
         fmt = "PNG" if ext == ".png" else "JPEG"
         img.save(filename, fmt)
 
-
-#text wrapping
+# text wrapping
 def wrap_text(text, width):
     if text is None or str(text).strip() == "":
         return {"wrapped_text": "", "line_count": 0}
@@ -138,42 +134,34 @@ def wrap_text(text, width):
         lines_for_curr_text += 1
     return {"wrapped_text": "\n".join(wrapped_lines), "line_count": lines_for_curr_text}
 
-
 # sleepopties maken
 def create_sleepoptie_single_image(
     text,
     tekst_titel="title",
     tekst_itemnummer="1",
-    canvas_height=None,          
+    canvas_height=None,
     max_chars_per_line=33,
-    font_size=11,                
+    font_size=11,
     base_dir=None,
 ):
     if not text or str(text).strip() == "":
         return None, None
-
     # wrapp
     wrap_result = wrap_text(text.strip(), max_chars_per_line)
     wrapped_text = wrap_result["wrapped_text"]
     line_count = wrap_result["line_count"]
-
     calculated_height = max(10, (line_count * 15) + 5)
-    
     if canvas_height is not None:
         height = max(calculated_height, canvas_height)
     else:
         height = calculated_height
-
     out_width = 210
-
     if base_dir is None:
         try:
             base_dir = os.path.dirname(os.path.abspath(__file__))
         except NameError:
             base_dir = os.getcwd()
-
     template_path = os.path.join(base_dir, "500x500_template.png")
-
     if os.path.exists(template_path):
         try:
             tpl = Image.open(template_path).convert("RGB")
@@ -183,31 +171,22 @@ def create_sleepoptie_single_image(
             img = Image.new("RGB", (out_width, height), "white")
     else:
         img = Image.new("RGB", (out_width, height), "white")
-
     draw = ImageDraw.Draw(img)
-
     verdana_path = os.path.join(base_dir, "verdana.ttf")
     try:
         font = ImageFont.truetype(verdana_path, font_size)
     except Exception:
         font = ImageFont.load_default()
-
     margin_x = 5
     margin_y = 3
-    
     draw.multiline_text((margin_x, margin_y), wrapped_text, fill="black", font=font, spacing=4)
-
     filename = f"{tekst_titel}_{tekst_itemnummer}.png"
     return img, filename
 
-
-#  Streamlit app 
+# Streamlit app
 st.title("Table & Sleepopties Generator (aangepast)")
-
 mode = st.selectbox("Choose mode", ["Tables (original UI)", "Answer options (sleepopties)"])
-
 if mode == "Tables (original UI)":
-    
     st.header("Sleepvragen Maker - (2026-03-20 - Laatste Update)")
     table_type = st.selectbox(
         "Select table type",
@@ -264,9 +243,7 @@ if mode == "Tables (original UI)":
         row2_height = int(longest_rows * 18 * answers_per_box)
         row_heights = [row1_height, row2_height]
         st.write(f"Height of row 2 (pixels) will be: {row2_height} px ( {longest_rows} × 18 × {answers_per_box} )")
-
     bold_choice = st.checkbox("Make all text bold?")
-
     table = TableImage(
         rows=rows,
         cols=cols,
@@ -276,7 +253,6 @@ if mode == "Tables (original UI)":
         line_width=1,
         wrap_width=29,
     )
-
     st.subheader("Enter cell text")
     for r in range(rows):
         for c in range(cols):
@@ -286,7 +262,6 @@ if mode == "Tables (original UI)":
             else:
                 bold_cell = bold_choice
             table.set_text(r, c, text, bold=bold_cell)
-
     if st.button("Generate Table Image"):
         img = table.draw()
         st.image(img, caption="Generated Table", use_column_width=True)
@@ -303,54 +278,50 @@ if mode == "Tables (original UI)":
 elif mode == "Answer options (sleepopties)":
     st.header("Generate Sleepoptie Images (A..H)")
     st.markdown("Enter text for sleepopties A through H. Leave empty entries blank to ignore them.")
-
     letters = ["A", "B", "C", "D", "E", "F", "G", "H"]
     options = []
     for L in letters:
         txt = st.text_area(f"Sleepoptie {L}", value="", height=80, key=f"opt_{L}")
         options.append(txt.strip())
-
     tekst_titel = st.text_input("Title (tekst_titel)", value="title")
     tekst_itemnummer = st.text_input("Item number (tekst_itemnummer)", value="1")
     max_chars_per_line = st.number_input("Max chars per line (wrap)", min_value=10, value=33)
-
     if st.button("Generate Sleepoptie Images"):
         base_dir = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
-
-        
         heights = []
+        line_counts = []
         for text in options:
             if text and text.strip() != "":
                 wr = wrap_text(text.strip(), max_chars_per_line)
                 lc = wr["line_count"]
-                h = max(10, (lc * 15) + 5)  
+                h = max(10, (lc * 15) + 5)
                 heights.append(h)
-
+                line_counts.append(lc)
         if not heights:
             st.warning("No non-empty sleepopties entered. Please enter at least one option.")
         else:
             max_height = max(heights)
+            max_lines = max(line_counts) if line_counts else 0
+            extra_pixels = max(0, max_lines - 1)
+            canvas_height = max_height + extra_pixels
 
             generated_images = []
-            
             for idx, text in enumerate(options, start=1):
                 if not text or text.strip() == "":
                     continue
-                letter = chr(64 + idx)  # 1 -> A, 2 -> B, ...
+                letter = chr(64 + idx)  
                 img, _ = create_sleepoptie_single_image(
                     text,
                     tekst_titel=tekst_titel,
-                    tekst_itemnummer=f"{tekst_itemnummer}_{letter}", 
-                    canvas_height=max_height,
+                    tekst_itemnummer=f"{tekst_itemnummer}_{letter}",
+                    canvas_height=canvas_height,
                     max_chars_per_line=max_chars_per_line,
-                    font_size=11,  
+                    font_size=11,
                     base_dir=base_dir,
                 )
                 if img is not None:
                     filename = f"{tekst_titel}_{tekst_itemnummer}_{letter}.png"
                     generated_images.append((filename, img))
-
-            
             st.success(f"Generated {len(generated_images)} images:")
             for i, (filename, img) in enumerate(generated_images, start=1):
                 st.image(img, caption=filename, use_column_width=False)
