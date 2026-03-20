@@ -4,7 +4,7 @@ import textwrap
 import io
 import os
 
-# TableImage class
+# TableImage class remains unchanged from your code ...
 class TableImage:
     def __init__(
         self,
@@ -83,12 +83,10 @@ class TableImage:
             except Exception:
                 font = ImageFont.load_default()
             lines = textwrap.wrap(text, width=self.wrap_width) if text else []
-            # Use font metrics for consistent line height
             try:
                 ascent, descent = font.getmetrics()
                 line_height = ascent + descent
             except Exception:
-                # fallback: measure first line (Verdana be weird)
                 if lines:
                     try:
                         bbox = draw.textbbox((0, 0), lines[0], font=font)
@@ -100,7 +98,6 @@ class TableImage:
                     line_height = getattr(font, "size", 12)
             cell_height = y_positions[r + 1] - y_positions[r]
             total_text_height = len(lines) * line_height
-            # center vertically
             block_top = y + (cell_height - total_text_height) / 2
             current_y = block_top
             for line in lines:
@@ -114,8 +111,7 @@ class TableImage:
         fmt = "PNG" if ext == ".png" else "JPEG"
         img.save(filename, fmt)
 
-
-# Text wrap
+# Wrap text function unchanged
 def wrap_text(text, width):
     if text is None:
         return {"wrapped_text": "", "line_count": 0}
@@ -139,40 +135,34 @@ def wrap_text(text, width):
         lines_for_curr_text += 1
     return {"wrapped_text": "\n".join(wrapped_lines), "line_count": lines_for_curr_text}
 
-
-# Sleepopties 
-def build_sleepoptie_image(options_list, tekst_titel="title", tekst_itemnummer="1", var_name="var",
-                           max_chars_per_line=33, font_size=11, base_dir=None):
-   
-    non_empty = [o for o in options_list if o and str(o).strip() != ""]
-    if not non_empty:
+# Plaatje één sleepoptie
+def create_sleepoptie_single_image(
+    text,
+    tekst_titel="title",
+    tekst_itemnummer="1",
+    max_chars_per_line=33,
+    font_size=11,
+    base_dir=None,
+):
+    if not text or str(text).strip() == "":
         return None, None
 
-    # Build combined text where each option is on its own block with letter prefix (table cells)
-    blocks = []
-    for idx, opt in enumerate(non_empty, start=1):
-        prefix = f"{chr(64 + idx)}. "
-        blocks.append(prefix + opt.strip())
-    combined_text = "\n\n".join(blocks)
-
-    # Wrap 
-    wrap_result = wrap_text(combined_text, max_chars_per_line)
+    # Wrap text
+    wrap_result = wrap_text(text.strip(), max_chars_per_line)
     wrapped_text = wrap_result["wrapped_text"]
     line_count = wrap_result["line_count"]
 
-    # IMage height calc
-    calculated_height = max(10, (line_count * 15) + 5)  # ensure at least small height
-    out_width = 210  # per R resize to 210x{height}
+    calculated_height = max(10, (line_count * 15) + 5)
+    out_width = 210
 
-    # get bg img
     if base_dir is None:
         try:
             base_dir = os.path.dirname(os.path.abspath(__file__))
         except NameError:
             base_dir = os.getcwd()
+
     template_path = os.path.join(base_dir, "500x500_template.png")
 
-    # Load bg img or use white cnavas
     if os.path.exists(template_path):
         try:
             tpl = Image.open(template_path).convert("RGB")
@@ -185,30 +175,30 @@ def build_sleepoptie_image(options_list, tekst_titel="title", tekst_itemnummer="
 
     draw = ImageDraw.Draw(img)
 
-
     verdana_path = os.path.join(base_dir, "verdana.ttf")
     try:
         font = ImageFont.truetype(verdana_path, font_size)
     except Exception:
         font = ImageFont.load_default()
-        
+
     margin_x = 5
     margin_y = 3
-    # for whitespaces
     draw.multiline_text((margin_x, margin_y), wrapped_text, fill="black", font=font, spacing=4)
 
-    # Don't know if this'll work lol
-    filename = f"{tekst_titel}_{tekst_itemnummer}_{var_name}.jpg"
+    # Filename without var_name and without letter prefix, per your request
+    filename = f"{tekst_titel}_{tekst_itemnummer}.png"
+
     return img, filename
 
 
-# App
-st.title("Table & Sleepopties Generator")
+# Streamlit app
 
+st.title("Table & Sleepopties Generator (updated)")
 
 mode = st.selectbox("Choose mode", ["Tables (original UI)", "Answer options (sleepopties)"])
 
 if mode == "Tables (original UI)":
+    # Keep your entire original Table UI code here unchanged
     st.header("Sleepvragen Maker - (2026-03-20 - Laatste Update)")
     table_type = st.selectbox(
         "Select table type",
@@ -230,7 +220,6 @@ if mode == "Tables (original UI)":
         col_width = int(st.number_input("Column width (pixels)", min_value=10, value=100, step=1))
         row_heights = row_height_pixels  
     else:
-        # Type 2 defaults (two rows, two columns)
         rows = 2
         cols = 2
         col_width = int(st.number_input("Column width (pixels)", min_value=10, value=225, step=1))
@@ -263,12 +252,12 @@ if mode == "Tables (original UI)":
             )
         )
         row1_height = int(heading_rows * 18)
-        # Keep the original user's formula but ensure expression is correct:
         row2_height = int(longest_rows * 18 * answers_per_box)
         row_heights = [row1_height, row2_height]
         st.write(f"Height of row 2 (pixels) will be: {row2_height} px ( {longest_rows} × 18 × {answers_per_box} )")
+
     bold_choice = st.checkbox("Make all text bold?")
-    # Create TableImage object
+
     table = TableImage(
         rows=rows,
         cols=cols,
@@ -278,7 +267,7 @@ if mode == "Tables (original UI)":
         line_width=1,
         wrap_width=29,
     )
-    # Input for each cell
+
     st.subheader("Enter cell text")
     for r in range(rows):
         for c in range(cols):
@@ -288,11 +277,10 @@ if mode == "Tables (original UI)":
             else:
                 bold_cell = bold_choice
             table.set_text(r, c, text, bold=bold_cell)
-    # Generate and download image
+
     if st.button("Generate Table Image"):
         img = table.draw()
         st.image(img, caption="Generated Table", use_column_width=True)
-        # Convert to bytes for download 
         buf = io.BytesIO()
         img.save(buf, format="PNG")
         byte_im = buf.getvalue()
@@ -304,9 +292,9 @@ if mode == "Tables (original UI)":
         )
 
 elif mode == "Answer options (sleepopties)":
-    st.header("Generate Sleepoptie Image (A..H)")
-
+    st.header("Generate Sleepoptie Images (A..H)")
     st.markdown("Enter text for sleepopties A through H. Leave empty entries blank to ignore them.")
+
     letters = ["A", "B", "C", "D", "E", "F", "G", "H"]
     options = []
     for L in letters:
@@ -315,25 +303,40 @@ elif mode == "Answer options (sleepopties)":
 
     tekst_titel = st.text_input("Title (tekst_titel)", value="title")
     tekst_itemnummer = st.text_input("Item number (tekst_itemnummer)", value="1")
-    var_name = st.text_input("Variable name (var_name)", value="var")
+
     max_chars_per_line = st.number_input("Max chars per line (wrap)", min_value=10, value=33)
     font_size = st.number_input("Font size (Verdana)", min_value=8, value=11)
 
-    if st.button("Generate Sleepoptie Image"):
-        img, filename = build_sleepoptie_image(
-            options_list=options,
-            tekst_titel=tekst_titel,
-            tekst_itemnummer=tekst_itemnummer,
-            var_name=var_name,
-            max_chars_per_line=max_chars_per_line,
-            font_size=font_size,
-            base_dir=os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
-        )
-        if img is None:
+    if st.button("Generate Sleepoptie Images"):
+        base_dir = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
+        generated_images = []
+        for idx, text in enumerate(options, start=1):
+            if not text:
+                continue
+            img, filename = create_sleepoptie_single_image(
+                text,
+                tekst_titel=tekst_titel,
+                tekst_itemnummer=f"{tekst_itemnummer}_{idx}",
+                max_chars_per_line=max_chars_per_line,
+                font_size=font_size,
+                base_dir=base_dir,
+            )
+            if img is not None:
+                generated_images.append((filename, img))
+
+        if not generated_images:
             st.warning("No non-empty sleepopties entered. Please enter at least one option.")
         else:
-            st.image(img, caption=filename, use_column_width=False)
-            buf = io.BytesIO()
-            img.convert("RGB").save(buf, format="JPEG", quality=90)
-            buf.seek(0)
-            st.download_button("Download Sleepoptie JPG", data=buf.getvalue(), file_name=filename, mime="image/jpeg")
+            st.success(f"Generated {len(generated_images)} images:")
+            for i, (filename, img) in enumerate(generated_images, start=1):
+                st.image(img, caption=filename, use_column_width=False)
+                buf = io.BytesIO()
+                img.save(buf, format="PNG")
+                buf.seek(0)
+                st.download_button(
+                    label=f"Download {filename}",
+                    data=buf.getvalue(),
+                    file_name=filename,
+                    mime="image/png",
+                    key=f"download_{i}"
+                )
