@@ -14,7 +14,7 @@ class TableImage:
         col_width,
         font_path="verdana.ttf",
         bold_font_path="verdanab.ttf",
-        font_size=11,
+        font_size=10,
         line_color=(0, 0, 0),
         bg_color=(255, 255, 255),
         line_width=2,
@@ -72,7 +72,7 @@ class TableImage:
                     outline=self.line_color,
                     width=self.line_width,
                 )
-        # text
+        
         for (r, c), text in self.cells.items():
             x = int(c * self.col_width)
             y = y_positions[r]
@@ -99,7 +99,7 @@ class TableImage:
                     line_height = getattr(font, "size", 12)
             cell_height = y_positions[r + 1] - y_positions[r]
             total_text_height = len(lines) * line_height
-            # center vertically
+            
             block_top = y + (cell_height - total_text_height) / 2
             current_y = block_top
             for line in lines:
@@ -114,7 +114,7 @@ class TableImage:
         img.save(filename, fmt)
 
 
-# text wrapping
+#text wrapping
 def wrap_text(text, width):
     if text is None or str(text).strip() == "":
         return {"wrapped_text": "", "line_count": 0}
@@ -139,20 +139,20 @@ def wrap_text(text, width):
     return {"wrapped_text": "\n".join(wrapped_lines), "line_count": lines_for_curr_text}
 
 
-# sleepopties genereren (pngs)
+# sleepopties maken
 def create_sleepoptie_single_image(
     text,
     tekst_titel="title",
     tekst_itemnummer="1",
     canvas_height=None,          
     max_chars_per_line=33,
-    font_size=11,              
+    font_size=11,                
     base_dir=None,
 ):
     if not text or str(text).strip() == "":
         return None, None
 
-    
+    # wrapp
     wrap_result = wrap_text(text.strip(), max_chars_per_line)
     wrapped_text = wrap_result["wrapped_text"]
     line_count = wrap_result["line_count"]
@@ -201,13 +201,13 @@ def create_sleepoptie_single_image(
     return img, filename
 
 
-# Streamlit
+#  Streamlit app 
 st.title("Table & Sleepopties Generator (aangepast)")
 
 mode = st.selectbox("Choose mode", ["Tables (original UI)", "Answer options (sleepopties)"])
 
 if mode == "Tables (original UI)":
-   
+    
     st.header("Sleepvragen Maker - (2026-03-20 - Laatste Update)")
     table_type = st.selectbox(
         "Select table type",
@@ -319,38 +319,36 @@ elif mode == "Answer options (sleepopties)":
 
         
         heights = []
-        non_empty_texts = []
         for text in options:
             if text and text.strip() != "":
-                non_empty_texts.append(text)
                 wr = wrap_text(text.strip(), max_chars_per_line)
                 lc = wr["line_count"]
-                h = max(10, (lc * 15) + 5)
+                h = max(10, (lc * 15) + 5)  
                 heights.append(h)
 
-        if not non_empty_texts:
+        if not heights:
             st.warning("No non-empty sleepopties entered. Please enter at least one option.")
         else:
             max_height = max(heights)
+
             generated_images = []
             
-            idx = 1
-            for text in options:
+            for idx, text in enumerate(options, start=1):
                 if not text or text.strip() == "":
-                    idx += 1
                     continue
-                img, filename = create_sleepoptie_single_image(
+                letter = chr(64 + idx)  # 1 -> A, 2 -> B, ...
+                img, _ = create_sleepoptie_single_image(
                     text,
                     tekst_titel=tekst_titel,
-                    tekst_itemnummer=f"{tekst_itemnummer}_{idx}",
+                    tekst_itemnummer=f"{tekst_itemnummer}_{letter}", 
                     canvas_height=max_height,
                     max_chars_per_line=max_chars_per_line,
                     font_size=11,  
                     base_dir=base_dir,
                 )
                 if img is not None:
+                    filename = f"{tekst_titel}_{tekst_itemnummer}_{letter}.png"
                     generated_images.append((filename, img))
-                idx += 1
 
             
             st.success(f"Generated {len(generated_images)} images:")
