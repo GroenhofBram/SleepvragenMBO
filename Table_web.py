@@ -283,7 +283,6 @@ if mode == "Tables (original UI)":
             )
         )
         row1_height = int(heading_lines * 18)
-        # Fixed invalid expression: multiply longest_rows, 18 and answers_per_box
         row2_height = int(longest_rows * 18 * answers_per_box)
         row_heights = [row1_height, row2_height]
         st.write(f"Height of row 2 (pixels) will be: {row2_height} px ( {longest_rows} × 18 × {answers_per_box} )")
@@ -392,7 +391,7 @@ elif mode == "Answer options (sleepopties)":
                         key=f"download_{i}"
                     )
 
-                # Create an in-memory ZIP containing all generated images and provide a single "Download All" button
+                # create ZIP in RAM en dowwnload
                 zip_buffer = io.BytesIO()
                 with zipfile.ZipFile(zip_buffer, "w", compression=zipfile.ZIP_DEFLATED) as zip_file:
                     for filename, img in generated_images:
