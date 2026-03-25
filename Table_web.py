@@ -208,7 +208,7 @@ if mode == "Tables (original UI)":
         "Max chars per line (wrap) for table cells",
         min_value=5,
         max_value=200,
-        value=29,
+        value=33,
         step=1,
         help="How many characters before wrapping inside each table cell",
         key="table_wrap_width",
