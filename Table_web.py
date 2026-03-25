@@ -42,7 +42,7 @@ class TableImage:
         self.width = int(self.cols * self.col_width)
         try:
             BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-        except NameError:
+        except Exception:
             BASE_DIR = os.getcwd()
         self.font_path = os.path.join(BASE_DIR, font_path)
         self.bold_font_path = os.path.join(BASE_DIR, bold_font_path)
@@ -81,7 +81,17 @@ class TableImage:
                 font = ImageFont.truetype(font_path, self.font_size)
             except Exception:
                 font = ImageFont.load_default()
-            lines = textwrap.wrap(text, width=self.wrap_width) if text else []
+            
+            lines = []
+            if text:
+                
+                paragraphs = str(text).split("\n")
+                for p in paragraphs:
+                    if p.strip() == "":
+                        lines.append("")  
+                    else:
+                        wrapped = textwrap.wrap(p, width=self.wrap_width) or [p]
+                        lines.extend(wrapped)
             try:
                 ascent, descent = font.getmetrics()
                 line_height = ascent + descent
@@ -110,7 +120,7 @@ class TableImage:
         fmt = "PNG" if ext == ".png" else "JPEG"
         img.save(filename, fmt)
 
-# text wrapping
+
 def wrap_text(text, width):
     if text is None or str(text).strip() == "":
         return {"wrapped_text": "", "line_count": 0}
@@ -134,7 +144,7 @@ def wrap_text(text, width):
         lines_for_curr_text += 1
     return {"wrapped_text": "\n".join(wrapped_lines), "line_count": lines_for_curr_text}
 
-# sleepopties maken
+# sleepopties image creation
 def create_sleepoptie_single_image(
     text,
     tekst_titel="title",
@@ -146,7 +156,6 @@ def create_sleepoptie_single_image(
 ):
     if not text or str(text).strip() == "":
         return None, None
-    # wrapp
     wrap_result = wrap_text(text.strip(), max_chars_per_line)
     wrapped_text = wrap_result["wrapped_text"]
     line_count = wrap_result["line_count"]
@@ -159,7 +168,7 @@ def create_sleepoptie_single_image(
     if base_dir is None:
         try:
             base_dir = os.path.dirname(os.path.abspath(__file__))
-        except NameError:
+        except Exception:
             base_dir = os.getcwd()
     template_path = os.path.join(base_dir, "500x500_template.png")
     if os.path.exists(template_path):
@@ -194,24 +203,35 @@ if mode == "Tables (original UI)":
         ("Type 1 (graphic gapmatch)", "Type 2 (graphic gapmatch categorize)"),
     )
 
+    
+    max_chars_per_line = st.number_input(
+        "Max chars per line (wrap) for table cells",
+        min_value=5,
+        max_value=200,
+        value=29,
+        step=1,
+        help="How many characters before wrapping inside each table cell",
+        key="table_wrap_width",
+    )
+
     if table_type.startswith("Type 1"):
-        rows = int(st.number_input("Number of rows", min_value=1, value=2, step=1))
-        cols = int(st.number_input("Number of columns", min_value=1, value=2, step=1))
+        rows = int(st.number_input("Number of rows", min_value=1, value=2, step=1, key="t1_rows"))
+        cols = int(st.number_input("Number of columns", min_value=1, value=2, step=1, key="t1_cols"))
+
         
-        # --- EDIT START: Ask heading rows if cols >= 3
-        heading_rows = 0
+        heading_lines = 0
         if cols >= 3:
-            heading_rows = int(
+            heading_lines = int(
                 st.number_input(
                     "How many rows are required for the headings?",
                     min_value=1,
                     value=1,
                     step=1,
-                    key="heading_rows_type1",
+                    key="heading_lines_type1",
+                    help="Number of text lines (each ~18px) to reserve for the heading row",
                 )
             )
-            st.write(f"Heading row(s) height (pixels) will be: {heading_rows * 18} px ( {heading_rows} × 18 )")
-        # --- EDIT END
+            st.write(f"Heading row height will be: {heading_lines * 18} px ( {heading_lines} × 18 )")
 
         longest_rows = int(
             st.number_input(
@@ -219,37 +239,40 @@ if mode == "Tables (original UI)":
                 min_value=1,
                 value=1,
                 step=1,
+                key="t1_longest_rows",
             )
         )
-        answer_rows_height = int(longest_rows * 18)
-        st.write(f"Row height (pixels) will be: {answer_rows_height} px ( {longest_rows} × 18 )")
+        answer_row_height = int(longest_rows * 18)
+        st.write(f"Answer row height (pixels) will be: {answer_row_height} px ( {longest_rows} × 18 )")
 
         
-        if heading_rows > 0:
-            if heading_rows > rows:
-                st.warning("Heading rows exceed total rows; clipping to total rows.")
-                heading_rows = rows
-            row_heights = [heading_rows * 18] * heading_rows + [answer_rows_height] * (rows - heading_rows)
+        if heading_lines > 0:
+            
+            first_row_height = heading_lines * 18
+            if rows == 1:
+                row_heights = [first_row_height]
+            else:
+                row_heights = [first_row_height] + [answer_row_height] * (rows - 1)
         else:
-            row_heights = [answer_rows_height] * rows
-        
+            row_heights = [answer_row_height] * rows
 
-        col_width = int(st.number_input("Column width (pixels)", min_value=10, value=100, step=1))
+        col_width = int(st.number_input("Column width (pixels)", min_value=10, value=100, step=1, key="t1_col_width"))
 
     else:
+        # Type 2
         rows = 2
         cols = 2
-        col_width = int(st.number_input("Column width (pixels)", min_value=10, value=225, step=1))
-        heading_rows = int(
+        col_width = int(st.number_input("Column width (pixels)", min_value=10, value=225, step=1, key="t2_col_width"))
+        heading_lines = int(
             st.number_input(
                 "How many rows are required for the headings?",
                 min_value=1,
                 value=1,
                 step=1,
-                key="heading_rows",
+                key="heading_rows_type2",
             )
         )
-        st.write(f"Height of row 1 (pixels) will be: {heading_rows * 18} px ( {heading_rows} × 18 )")
+        st.write(f"Height of row 1 (pixels) will be: {heading_lines * 18} px ( {heading_lines} × 18 )")
         longest_rows = int(
             st.number_input(
                 "How many rows are required for the longest answer?",
@@ -268,12 +291,12 @@ if mode == "Tables (original UI)":
                 key="answers_per_box",
             )
         )
-        row1_height = int(heading_rows * 18)
-        row2_height = int(longest_rows * 18 * answers_per_box)  
+        row1_height = int(heading_lines * 18)
+        row2_height = int(longest_rows * 18 * answers_per_box)
         row_heights = [row1_height, row2_height]
         st.write(f"Height of row 2 (pixels) will be: {row2_height} px ( {longest_rows} × 18 × {answers_per_box} )")
 
-    bold_choice = st.checkbox("Make all text bold?")
+    bold_choice = st.checkbox("Make all text bold?", key="table_bold_all")
 
     table = TableImage(
         rows=rows,
@@ -282,20 +305,21 @@ if mode == "Tables (original UI)":
         col_width=col_width,
         font_size=11,
         line_width=1,
-        wrap_width=29,
+        wrap_width=max_chars_per_line,
     )
 
     st.subheader("Enter cell text")
     for r in range(rows):
         for c in range(cols):
-            text = st.text_input(f"Cell ({r+1},{c+1})", key=f"text_{r}_{c}")
+            text_key = f"text_{r}_{c}"
+            text = st.text_input(f"Cell ({r+1},{c+1})", key=text_key)
             if table_type.startswith("Type 1"):
                 bold_cell = st.checkbox(f"Bold? (Cell {r+1},{c+1})", key=f"bold_{r}_{c}")
             else:
                 bold_cell = bold_choice
             table.set_text(r, c, text, bold=bold_cell)
 
-    if st.button("Generate Table Image"):
+    if st.button("Generate Table Image", key="gen_table"):
         img = table.draw()
         st.image(img, caption="Generated Table", use_column_width=True)
         buf = io.BytesIO()
@@ -306,6 +330,7 @@ if mode == "Tables (original UI)":
             data=byte_im,
             file_name="table.png",
             mime="image/png",
+            key="download_table"
         )
 
 elif mode == "Answer options (sleepopties)":
@@ -316,16 +341,17 @@ elif mode == "Answer options (sleepopties)":
     for L in letters:
         txt = st.text_area(f"Sleepoptie {L}", value="", height=80, key=f"opt_{L}")
         options.append(txt.strip())
-    tekst_titel = st.text_input("Title (tekst_titel)", value="title")
-    tekst_itemnummer = st.text_input("Item number (tekst_itemnummer)", value="1")
-    max_chars_per_line = st.number_input("Max chars per line (wrap)", min_value=10, value=33)
-    if st.button("Generate Sleepoptie Images"):
+    tekst_titel = st.text_input("Title (tekst_titel)", value="title", key="sleep_titel")
+    tekst_itemnummer = st.text_input("Item number (tekst_itemnummer)", value="1", key="sleep_itemnr")
+    max_chars_per_line_sleep = st.number_input("Max chars per line (wrap)", min_value=10, value=33, key="sleep_wrap")
+
+    if st.button("Generate Sleepoptie Images", key="gen_sleep"):
         base_dir = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
         heights = []
         line_counts = []
         for text in options:
             if text and text.strip() != "":
-                wr = wrap_text(text.strip(), max_chars_per_line)
+                wr = wrap_text(text.strip(), max_chars_per_line_sleep)
                 lc = wr["line_count"]
                 h = max(10, (lc * 15) + 5)
                 heights.append(h)
@@ -341,13 +367,13 @@ elif mode == "Answer options (sleepopties)":
             for idx, text in enumerate(options, start=1):
                 if not text or text.strip() == "":
                     continue
-                letter = chr(64 + idx)  
-                img, _= create_sleepoptie_single_image(
+                letter = chr(64 + idx)
+                img, _ = create_sleepoptie_single_image(
                     text,
                     tekst_titel=tekst_titel,
                     tekst_itemnummer=f"{tekst_itemnummer}_{letter}",
                     canvas_height=canvas_height,
-                    max_chars_per_line=max_chars_per_line,
+                    max_chars_per_line=max_chars_per_line_sleep,
                     font_size=11,
                     base_dir=base_dir,
                 )
