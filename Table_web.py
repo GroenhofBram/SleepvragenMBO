@@ -330,6 +330,9 @@ if mode == "Tables (original UI)":
 elif mode == "Answer options (sleepopties)":
     st.header("Generate Sleepoptie Images (A..H)")
     st.markdown("Enter text for sleepopties A through H. Leave empty entries blank to ignore them.")
+    tekst_titel = st.text_input("Title (tekst_titel)", value="title", key="sleep_titel")
+    tekst_itemnummer = st.text_input("Item number (tekst_itemnummer)", value="1", key="sleep_itemnr")
+    max_chars_per_line_sleep = st.number_input("Max chars per line (wrap)", min_value=10, value=33, key="sleep_wrap")
     num_columns = st.number_input(
         "Number of columns",
         min_value=1,
@@ -343,9 +346,7 @@ elif mode == "Answer options (sleepopties)":
     for L in letters:
         txt = st.text_area(f"Sleepoptie {L}", value="", height=80, key=f"opt_{L}")
         options.append(txt.strip())
-    tekst_titel = st.text_input("Title (tekst_titel)", value="title", key="sleep_titel")
-    tekst_itemnummer = st.text_input("Item number (tekst_itemnummer)", value="1", key="sleep_itemnr")
-    max_chars_per_line_sleep = st.number_input("Max chars per line (wrap)", min_value=10, value=33, key="sleep_wrap")
+
     if st.button("Generate Sleepoptie Images", key="gen_sleep"):
         base_dir = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
         heights = []
