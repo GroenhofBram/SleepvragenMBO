@@ -4,6 +4,7 @@ import textwrap
 import io
 import os
 import math
+import zipfile
 
 # TableImage
 class TableImage:
@@ -50,11 +51,9 @@ class TableImage:
         self.font_size = int(font_size)
         self.cells = {}
         self.bold_cells = {}
-
     def set_text(self, row, col, text, bold=False):
         self.cells[(int(row), int(col))] = "" if text is None else str(text)
         self.bold_cells[(int(row), int(col))] = bool(bold)
-
     def draw(self):
         img = Image.new("RGB", (self.width, self.height), self.bg_color)
         draw = ImageDraw.Draw(img)
@@ -112,13 +111,11 @@ class TableImage:
                 draw.text((x + self.padding_left, current_y), line, fill=(0, 0, 0), font=font)
                 current_y += line_height
         return img
-
     def save(self, filename):
         img = self.draw()
         ext = os.path.splitext(filename)[1].lower()
         fmt = "PNG" if ext == ".png" else "JPEG"
         img.save(filename, fmt)
-
 
 def wrap_text(text, width):
     if text is None or str(text).strip() == "":
@@ -142,7 +139,6 @@ def wrap_text(text, width):
         wrapped_lines.append(current_line)
         lines_for_curr_text += 1
     return {"wrapped_text": "\n".join(wrapped_lines), "line_count": lines_for_curr_text}
-
 
 # sleepopties image creation
 def create_sleepoptie_single_image(
@@ -170,7 +166,6 @@ def create_sleepoptie_single_image(
     except Exception:
         num_cols = 2
     out_width = max(50, math.floor((450.0 / num_cols) - 15))
-
     if base_dir is None:
         try:
             base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -197,7 +192,6 @@ def create_sleepoptie_single_image(
     draw.multiline_text((margin_x, margin_y), wrapped_text, fill="black", font=font, spacing=4)
     filename = f"{tekst_titel}_{tekst_itemnummer}.png"
     return img, filename
-
 
 # Streamlit app
 st.title("Table & Sleepopties Generator (aangepast)")
@@ -289,10 +283,10 @@ if mode == "Tables (original UI)":
             )
         )
         row1_height = int(heading_lines * 18)
+        # Fixed invalid expression: multiply longest_rows, 18 and answers_per_box
         row2_height = int(longest_rows * 18 * answers_per_box)
         row_heights = [row1_height, row2_height]
         st.write(f"Height of row 2 (pixels) will be: {row2_height} px ( {longest_rows} × 18 × {answers_per_box} )")
-
     bold_choice = st.checkbox("Make all text bold?", key="table_bold_all")
     table = TableImage(
         rows=rows,
@@ -326,7 +320,6 @@ if mode == "Tables (original UI)":
             mime="image/png",
             key="download_table"
         )
-
 elif mode == "Answer options (sleepopties)":
     st.header("Generate Sleepoptie Images (A..H)")
     st.markdown("Enter text for sleepopties A through H. Leave empty entries blank to ignore them.")
@@ -346,7 +339,6 @@ elif mode == "Answer options (sleepopties)":
     for L in letters:
         txt = st.text_area(f"Sleepoptie {L}", value="", height=80, key=f"opt_{L}")
         options.append(txt.strip())
-
     if st.button("Generate Sleepoptie Images", key="gen_sleep"):
         base_dir = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
         heights = []
@@ -370,7 +362,7 @@ elif mode == "Answer options (sleepopties)":
                 if not text or text.strip() == "":
                     continue
                 letter = chr(64 + idx)
-                img, _ = create_sleepoptie_single_image(
+                img, _= create_sleepoptie_single_image(
                     text,
                     tekst_titel=tekst_titel,
                     tekst_itemnummer=f"{tekst_itemnummer}_{letter}",
@@ -383,16 +375,40 @@ elif mode == "Answer options (sleepopties)":
                 if img is not None:
                     filename = f"{tekst_titel}_{tekst_itemnummer}_{letter}.png"
                     generated_images.append((filename, img))
-            st.success(f"Generated {len(generated_images)} images:")
-            for i, (filename, img) in enumerate(generated_images, start=1):
-                st.image(img, caption=filename, use_column_width=False)
-                buf = io.BytesIO()
-                img.save(buf, format="PNG")
-                buf.seek(0)
+
+            # Display individual images and provide per-image downloads
+            if generated_images:
+                st.success(f"Generated {len(generated_images)} images:")
+                for i, (filename, img) in enumerate(generated_images, start=1):
+                    st.image(img, caption=filename, use_column_width=False)
+                    buf = io.BytesIO()
+                    img.save(buf, format="PNG")
+                    buf.seek(0)
+                    st.download_button(
+                        label=f"Download {filename}",
+                        data=buf.getvalue(),
+                        file_name=filename,
+                        mime="image/png",
+                        key=f"download_{i}"
+                    )
+
+                # Create an in-memory ZIP containing all generated images and provide a single "Download All" button
+                zip_buffer = io.BytesIO()
+                with zipfile.ZipFile(zip_buffer, "w", compression=zipfile.ZIP_DEFLATED) as zip_file:
+                    for filename, img in generated_images:
+                        img_bytes = io.BytesIO()
+                        img.save(img_bytes, format="PNG")
+                        img_bytes.seek(0)
+                        zip_file.writestr(filename, img_bytes.getvalue())
+                zip_buffer.seek(0)
+
+                zip_name = f"{tekst_titel}_{tekst_itemnummer}_all_images.zip"
                 st.download_button(
-                    label=f"Download {filename}",
-                    data=buf.getvalue(),
-                    file_name=filename,
-                    mime="image/png",
-                    key=f"download_{i}"
+                    label="Download All Images (ZIP)",
+                    data=zip_buffer.getvalue(),
+                    file_name=zip_name,
+                    mime="application/zip",
+                    key="download_all_zip"
                 )
+            else:
+                st.warning("No images were generated to download.")
