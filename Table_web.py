@@ -186,33 +186,15 @@ def create_sleepoptie_single_image(
 # Streamlit app
 st.title("Table & Sleepopties Generator (aangepast)")
 mode = st.selectbox("Choose mode", ["Tables (original UI)", "Answer options (sleepopties)"])
-
 if mode == "Tables (original UI)":
     st.header("Sleepvragen Maker - (2026-03-20 - Laatste Update)")
     table_type = st.selectbox(
         "Select table type",
         ("Type 1 (graphic gapmatch)", "Type 2 (graphic gapmatch categorize)"),
     )
-
     if table_type.startswith("Type 1"):
         rows = int(st.number_input("Number of rows", min_value=1, value=2, step=1))
         cols = int(st.number_input("Number of columns", min_value=1, value=2, step=1))
-        
-        # --- EDIT START: Ask heading rows if cols >= 3
-        heading_rows = 0
-        if cols >= 3:
-            heading_rows = int(
-                st.number_input(
-                    "How many rows are required for the headings?",
-                    min_value=1,
-                    value=1,
-                    step=1,
-                    key="heading_rows_type1",
-                )
-            )
-            st.write(f"Heading row(s) height (pixels) will be: {heading_rows * 18} px ( {heading_rows} × 18 )")
-        # --- EDIT END
-
         longest_rows = int(
             st.number_input(
                 "How many rows are required for the longest answer?",
@@ -221,21 +203,10 @@ if mode == "Tables (original UI)":
                 step=1,
             )
         )
-        answer_rows_height = int(longest_rows * 18)
-        st.write(f"Row height (pixels) will be: {answer_rows_height} px ( {longest_rows} × 18 )")
-
-        
-        if heading_rows > 0:
-            if heading_rows > rows:
-                st.warning("Heading rows exceed total rows; clipping to total rows.")
-                heading_rows = rows
-            row_heights = [heading_rows * 18] * heading_rows + [answer_rows_height] * (rows - heading_rows)
-        else:
-            row_heights = [answer_rows_height] * rows
-        
-
+        row_height_pixels = int(longest_rows * 18)
+        st.write(f"Row height (pixels) will be: {row_height_pixels} px ( {longest_rows} × 18 )")
         col_width = int(st.number_input("Column width (pixels)", min_value=10, value=100, step=1))
-
+        row_heights = row_height_pixels
     else:
         rows = 2
         cols = 2
@@ -269,12 +240,10 @@ if mode == "Tables (original UI)":
             )
         )
         row1_height = int(heading_rows * 18)
-        row2_height = int(longest_rows * 18 * answers_per_box)  
+        row2_height = int(longest_rows * 18 * answers_per_box)
         row_heights = [row1_height, row2_height]
         st.write(f"Height of row 2 (pixels) will be: {row2_height} px ( {longest_rows} × 18 × {answers_per_box} )")
-
     bold_choice = st.checkbox("Make all text bold?")
-
     table = TableImage(
         rows=rows,
         cols=cols,
@@ -284,7 +253,6 @@ if mode == "Tables (original UI)":
         line_width=1,
         wrap_width=29,
     )
-
     st.subheader("Enter cell text")
     for r in range(rows):
         for c in range(cols):
@@ -294,7 +262,6 @@ if mode == "Tables (original UI)":
             else:
                 bold_cell = bold_choice
             table.set_text(r, c, text, bold=bold_cell)
-
     if st.button("Generate Table Image"):
         img = table.draw()
         st.image(img, caption="Generated Table", use_column_width=True)
@@ -337,12 +304,13 @@ elif mode == "Answer options (sleepopties)":
             max_lines = max(line_counts) if line_counts else 0
             extra_pixels = max(0, max_lines - 1)
             canvas_height = max_height + extra_pixels
+
             generated_images = []
             for idx, text in enumerate(options, start=1):
                 if not text or text.strip() == "":
                     continue
                 letter = chr(64 + idx)  
-                img, _= create_sleepoptie_single_image(
+                img, _ = create_sleepoptie_single_image(
                     text,
                     tekst_titel=tekst_titel,
                     tekst_itemnummer=f"{tekst_itemnummer}_{letter}",
