@@ -81,10 +81,8 @@ class TableImage:
                 font = ImageFont.truetype(font_path, self.font_size)
             except Exception:
                 font = ImageFont.load_default()
-            
             lines = []
             if text:
-                
                 paragraphs = str(text).split("\n")
                 for p in paragraphs:
                     if p.strip() == "":
@@ -119,7 +117,6 @@ class TableImage:
         ext = os.path.splitext(filename)[1].lower()
         fmt = "PNG" if ext == ".png" else "JPEG"
         img.save(filename, fmt)
-
 
 def wrap_text(text, width):
     if text is None or str(text).strip() == "":
@@ -202,8 +199,6 @@ if mode == "Tables (original UI)":
         "Select table type",
         ("Type 1 (graphic gapmatch)", "Type 2 (graphic gapmatch categorize)"),
     )
-
-    
     max_chars_per_line = st.number_input(
         "Max chars per line (wrap) for table cells",
         min_value=5,
@@ -217,8 +212,10 @@ if mode == "Tables (original UI)":
     if table_type.startswith("Type 1"):
         rows = int(st.number_input("Number of rows", min_value=1, value=2, step=1, key="t1_rows"))
         cols = int(st.number_input("Number of columns", min_value=1, value=2, step=1, key="t1_cols"))
+        # Column width automatically calculated for Type 1
+        col_width = int(450 // cols)
+        st.write(f"Column width (pixels) is automatically set to: {col_width} px (450 // {cols})")
 
-        
         heading_lines = 0
         if cols >= 3:
             heading_lines = int(
@@ -232,7 +229,6 @@ if mode == "Tables (original UI)":
                 )
             )
             st.write(f"Heading row height will be: {heading_lines * 18} px ( {heading_lines} × 18 )")
-
         longest_rows = int(
             st.number_input(
                 "How many rows are required for the longest answer?",
@@ -244,10 +240,7 @@ if mode == "Tables (original UI)":
         )
         answer_row_height = int(longest_rows * 18)
         st.write(f"Answer row height (pixels) will be: {answer_row_height} px ( {longest_rows} × 18 )")
-
-        
         if heading_lines > 0:
-            
             first_row_height = heading_lines * 18
             if rows == 1:
                 row_heights = [first_row_height]
@@ -256,13 +249,14 @@ if mode == "Tables (original UI)":
         else:
             row_heights = [answer_row_height] * rows
 
-        col_width = int(st.number_input("Column width (pixels)", min_value=10, value=100, step=1, key="t1_col_width"))
-
     else:
         # Type 2
         rows = 2
         cols = 2
-        col_width = int(st.number_input("Column width (pixels)", min_value=10, value=225, step=1, key="t2_col_width"))
+        # Column width fixed at 225 for Type 2
+        col_width = 225
+        st.write(f"Column width (pixels) for Type 2 is fixed to: {col_width} px")
+
         heading_lines = int(
             st.number_input(
                 "How many rows are required for the headings?",
@@ -292,12 +286,12 @@ if mode == "Tables (original UI)":
             )
         )
         row1_height = int(heading_lines * 18)
+        # Fixed multiplication expression
         row2_height = int(longest_rows * 18 * answers_per_box)
         row_heights = [row1_height, row2_height]
         st.write(f"Height of row 2 (pixels) will be: {row2_height} px ( {longest_rows} × 18 × {answers_per_box} )")
 
     bold_choice = st.checkbox("Make all text bold?", key="table_bold_all")
-
     table = TableImage(
         rows=rows,
         cols=cols,
@@ -307,7 +301,6 @@ if mode == "Tables (original UI)":
         line_width=1,
         wrap_width=max_chars_per_line,
     )
-
     st.subheader("Enter cell text")
     for r in range(rows):
         for c in range(cols):
@@ -318,7 +311,6 @@ if mode == "Tables (original UI)":
             else:
                 bold_cell = bold_choice
             table.set_text(r, c, text, bold=bold_cell)
-
     if st.button("Generate Table Image", key="gen_table"):
         img = table.draw()
         st.image(img, caption="Generated Table", use_column_width=True)
@@ -344,7 +336,6 @@ elif mode == "Answer options (sleepopties)":
     tekst_titel = st.text_input("Title (tekst_titel)", value="title", key="sleep_titel")
     tekst_itemnummer = st.text_input("Item number (tekst_itemnummer)", value="1", key="sleep_itemnr")
     max_chars_per_line_sleep = st.number_input("Max chars per line (wrap)", min_value=10, value=33, key="sleep_wrap")
-
     if st.button("Generate Sleepoptie Images", key="gen_sleep"):
         base_dir = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
         heights = []
@@ -368,7 +359,7 @@ elif mode == "Answer options (sleepopties)":
                 if not text or text.strip() == "":
                     continue
                 letter = chr(64 + idx)
-                img, _ = create_sleepoptie_single_image(
+                img, _= create_sleepoptie_single_image(
                     text,
                     tekst_titel=tekst_titel,
                     tekst_itemnummer=f"{tekst_itemnummer}_{letter}",
