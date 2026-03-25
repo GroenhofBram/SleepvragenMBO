@@ -5,6 +5,7 @@ import io
 import os
 import math
 import zipfile
+
 # TableImage
 class TableImage:
     def **init**(
