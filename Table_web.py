@@ -3,6 +3,7 @@ from PIL import Image, ImageDraw, ImageFont
 import textwrap
 import io
 import os
+import math
 
 # TableImage
 class TableImage:
@@ -86,7 +87,7 @@ class TableImage:
                 paragraphs = str(text).split("\n")
                 for p in paragraphs:
                     if p.strip() == "":
-                        lines.append("")  
+                        lines.append("")
                     else:
                         wrapped = textwrap.wrap(p, width=self.wrap_width) or [p]
                         lines.extend(wrapped)
@@ -118,6 +119,7 @@ class TableImage:
         fmt = "PNG" if ext == ".png" else "JPEG"
         img.save(filename, fmt)
 
+
 def wrap_text(text, width):
     if text is None or str(text).strip() == "":
         return {"wrapped_text": "", "line_count": 0}
@@ -141,6 +143,7 @@ def wrap_text(text, width):
         lines_for_curr_text += 1
     return {"wrapped_text": "\n".join(wrapped_lines), "line_count": lines_for_curr_text}
 
+
 # sleepopties image creation
 def create_sleepoptie_single_image(
     text,
@@ -150,6 +153,7 @@ def create_sleepoptie_single_image(
     max_chars_per_line=33,
     font_size=11,
     base_dir=None,
+    num_columns=2,
 ):
     if not text or str(text).strip() == "":
         return None, None
@@ -161,7 +165,12 @@ def create_sleepoptie_single_image(
         height = max(calculated_height, canvas_height)
     else:
         height = calculated_height
-    out_width = 210
+    try:
+        num_cols = int(num_columns) if num_columns and int(num_columns) > 0 else 2
+    except Exception:
+        num_cols = 2
+    out_width = max(50, math.floor((450.0 / num_cols) - 15))
+
     if base_dir is None:
         try:
             base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -189,10 +198,10 @@ def create_sleepoptie_single_image(
     filename = f"{tekst_titel}_{tekst_itemnummer}.png"
     return img, filename
 
+
 # Streamlit app
 st.title("Table & Sleepopties Generator (aangepast)")
 mode = st.selectbox("Choose mode", ["Tables (original UI)", "Answer options (sleepopties)"])
-
 if mode == "Tables (original UI)":
     st.header("Sleepvragen Maker - (2026-03-20 - Laatste Update)")
     table_type = st.selectbox(
@@ -208,14 +217,11 @@ if mode == "Tables (original UI)":
         help="How many characters before wrapping inside each table cell",
         key="table_wrap_width",
     )
-
     if table_type.startswith("Type 1"):
         rows = int(st.number_input("Number of rows", min_value=1, value=2, step=1, key="t1_rows"))
         cols = int(st.number_input("Number of columns", min_value=1, value=2, step=1, key="t1_cols"))
-        # Column width automatically calculated for Type 1
         col_width = int(450 // cols)
         st.write(f"Column width (pixels) is automatically set to: {col_width} px (450 // {cols})")
-
         heading_lines = 0
         if cols >= 3:
             heading_lines = int(
@@ -248,15 +254,12 @@ if mode == "Tables (original UI)":
                 row_heights = [first_row_height] + [answer_row_height] * (rows - 1)
         else:
             row_heights = [answer_row_height] * rows
-
     else:
         # Type 2
         rows = 2
         cols = 2
-        # Column width fixed at 225 for Type 2
         col_width = 225
         st.write(f"Column width (pixels) for Type 2 is fixed to: {col_width} px")
-
         heading_lines = int(
             st.number_input(
                 "How many rows are required for the headings?",
@@ -286,7 +289,6 @@ if mode == "Tables (original UI)":
             )
         )
         row1_height = int(heading_lines * 18)
-        # Fixed multiplication expression
         row2_height = int(longest_rows * 18 * answers_per_box)
         row_heights = [row1_height, row2_height]
         st.write(f"Height of row 2 (pixels) will be: {row2_height} px ( {longest_rows} × 18 × {answers_per_box} )")
@@ -328,6 +330,14 @@ if mode == "Tables (original UI)":
 elif mode == "Answer options (sleepopties)":
     st.header("Generate Sleepoptie Images (A..H)")
     st.markdown("Enter text for sleepopties A through H. Leave empty entries blank to ignore them.")
+    num_columns = st.number_input(
+        "Number of columns",
+        min_value=1,
+        value=2,
+        step=1,
+        key="sleep_num_columns",
+        help="Number of columns used to compute per-option image width",
+    )
     letters = ["A", "B", "C", "D", "E", "F", "G", "H"]
     options = []
     for L in letters:
@@ -359,7 +369,7 @@ elif mode == "Answer options (sleepopties)":
                 if not text or text.strip() == "":
                     continue
                 letter = chr(64 + idx)
-                img, _= create_sleepoptie_single_image(
+                img, _ = create_sleepoptie_single_image(
                     text,
                     tekst_titel=tekst_titel,
                     tekst_itemnummer=f"{tekst_itemnummer}_{letter}",
@@ -367,6 +377,7 @@ elif mode == "Answer options (sleepopties)":
                     max_chars_per_line=max_chars_per_line_sleep,
                     font_size=11,
                     base_dir=base_dir,
+                    num_columns=num_columns,
                 )
                 if img is not None:
                     filename = f"{tekst_titel}_{tekst_itemnummer}_{letter}.png"
