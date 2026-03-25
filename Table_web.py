@@ -8,7 +8,7 @@ import zipfile
 
 # TableImage
 class TableImage:
-    def **init**(
+    def __init__(
         self,
         rows,
         cols,
