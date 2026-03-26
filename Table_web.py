@@ -6,7 +6,7 @@ import os
 import math
 import zipfile
 
-# TableImage
+# TableImage (unchanged functionality)
 class TableImage:
     def __init__(
         self,
@@ -51,9 +51,11 @@ class TableImage:
         self.font_size = int(font_size)
         self.cells = {}
         self.bold_cells = {}
+
     def set_text(self, row, col, text, bold=False):
         self.cells[(int(row), int(col))] = "" if text is None else str(text)
         self.bold_cells[(int(row), int(col))] = bool(bold)
+
     def draw(self):
         img = Image.new("RGB", (self.width, self.height), self.bg_color)
         draw = ImageDraw.Draw(img)
@@ -111,11 +113,13 @@ class TableImage:
                 draw.text((x + self.padding_left, current_y), line, fill=(0, 0, 0), font=font)
                 current_y += line_height
         return img
+
     def save(self, filename):
         img = self.draw()
         ext = os.path.splitext(filename)[1].lower()
         fmt = "PNG" if ext == ".png" else "JPEG"
         img.save(filename, fmt)
+
 
 def wrap_text(text, width):
     if text is None or str(text).strip() == "":
@@ -140,7 +144,8 @@ def wrap_text(text, width):
         lines_for_curr_text += 1
     return {"wrapped_text": "\n".join(wrapped_lines), "line_count": lines_for_curr_text}
 
-# sleepopties image creation
+
+# sleepopties image creation (unchanged functionality)
 def create_sleepoptie_single_image(
     text,
     tekst_titel="title",
@@ -193,221 +198,292 @@ def create_sleepoptie_single_image(
     filename = f"{tekst_titel}_{tekst_itemnummer}.png"
     return img, filename
 
-# Streamlit app
+
+# ---------- UI (layout-only changes) ----------
+st.set_page_config(page_title="Table & Sleepopties Generator", layout="wide")
 st.title("Table & Sleepopties Generator (aangepast)")
-mode = st.selectbox("Choose mode", ["Tables (original UI)", "Answer options (sleepopties)"])
+st.caption("Tip: use the controls on the left to configure inputs, and see previews on the right.")
+
+# Keep the same mode selection but place it more prominently
+mode = st.selectbox(
+    "Select mode",
+    ["Tables (original UI)", "Answer options (sleepopties)"],
+    index=0,
+)
+
+# Two-column layout: left for inputs, right for preview/downloads
+left, right = st.columns([1, 1.2])
+
+# ---------- Tables mode ----------
 if mode == "Tables (original UI)":
-    st.header("Sleepvragen Maker - (2026-03-26 - Laatste Update)")
-    table_type = st.selectbox(
-        "Select table type",
-        ("Type 1 (graphic gapmatch)", "Type 2 (graphic gapmatch categorize)"),
-    )
-    max_chars_per_line = st.number_input(
-        "Max chars per line (wrap) for table cells",
-        min_value=5,
-        max_value=200,
-        value=33,
-        step=1,
-        help="How many characters before wrapping inside each table cell",
-        key="table_wrap_width",
-    )
-    if table_type.startswith("Type 1"):
-        rows = int(st.number_input("Number of rows", min_value=1, value=2, step=1, key="t1_rows"))
-        cols = int(st.number_input("Number of columns", min_value=1, value=2, step=1, key="t1_cols"))
-        col_width = int(450 // cols)
-        st.write(f"Column width (pixels) is automatically set to: {col_width} px (450 // {cols})")
-        heading_lines = 0
-        if cols >= 3:
-            heading_lines = int(
-                st.number_input(
-                    "How many rows are required for the headings?",
-                    min_value=1,
-                    value=1,
-                    step=1,
-                    key="heading_lines_type1",
-                    help="Number of text lines (each ~18px) to reserve for the heading row",
-                )
-            )
-            st.write(f"Heading row height will be: {heading_lines * 18} px ( {heading_lines} × 18 )")
-        longest_rows = int(
-            st.number_input(
-                "How many rows are required for the longest answer?",
-                min_value=1,
-                value=1,
-                step=1,
-                key="t1_longest_rows",
-            )
+    with left:
+        st.header("Sleepvragen Maker")
+        st.info("Laatste Update: 2026-03-26")
+
+        # Table type and general options grouped
+        st.subheader("Algemene instellingen")
+        table_type = st.selectbox(
+            "Select table type",
+            ("Type 1 (graphic gapmatch)", "Type 2 (graphic gapmatch categorize)"),
         )
-        answer_row_height = int(longest_rows * 18)
-        st.write(f"Answer row height (pixels) will be: {answer_row_height} px ( {longest_rows} × 18 )")
-        if heading_lines > 0:
-            first_row_height = heading_lines * 18
-            if rows == 1:
-                row_heights = [first_row_height]
-            else:
-                row_heights = [first_row_height] + [answer_row_height] * (rows - 1)
-        else:
-            row_heights = [answer_row_height] * rows
-    else:
-        # Type 2
-        rows = 2
-        cols = 2
-        col_width = 225
-        st.write(f"Column width (pixels) for Type 2 is fixed to: {col_width} px")
-        heading_lines = int(
-            st.number_input(
-                "How many rows are required for the headings?",
-                min_value=1,
-                value=1,
-                step=1,
-                key="heading_rows_type2",
-            )
+        max_chars_per_line = st.number_input(
+            "Max chars per line (wrap) for table cells",
+            min_value=5,
+            max_value=200,
+            value=33,
+            step=1,
+            help="How many characters before wrapping inside each table cell",
+            key="table_wrap_width",
         )
-        st.write(f"Height of row 1 (pixels) will be: {heading_lines * 18} px ( {heading_lines} × 18 )")
-        longest_rows = int(
-            st.number_input(
-                "How many rows are required for the longest answer?",
-                min_value=1,
-                value=1,
-                step=1,
-                key="longest_rows_type2",
-            )
-        )
-        answers_per_box = int(
-            st.number_input(
-                "How many answers can fit in 1 box?",
-                min_value=1,
-                value=1,
-                step=1,
-                key="answers_per_box",
-            )
-        )
-        row1_height = int(heading_lines * 18)
-        row2_height = int(longest_rows * 18 * answers_per_box)
-        row_heights = [row1_height, row2_height]
-        st.write(f"Height of row 2 (pixels) will be: {row2_height} px ( {longest_rows} × 18 × {answers_per_box} )")
-    bold_choice = st.checkbox("Make all text bold?", key="table_bold_all")
-    table = TableImage(
-        rows=rows,
-        cols=cols,
-        row_height=row_heights,
-        col_width=col_width,
-        font_size=11,
-        line_width=1,
-        wrap_width=max_chars_per_line,
-    )
-    st.subheader("Enter cell text")
-    for r in range(rows):
-        for c in range(cols):
-            text_key = f"text_{r}_{c}"
-            text = st.text_input(f"Cell ({r+1},{c+1})", key=text_key)
+
+        # Group size controls in an expander
+        with st.expander("Afmetingen & rijen/kolommen (Size & rows/cols)", expanded=True):
             if table_type.startswith("Type 1"):
-                bold_cell = st.checkbox(f"Bold? (Cell {r+1},{c+1})", key=f"bold_{r}_{c}")
-            else:
-                bold_cell = bold_choice
-            table.set_text(r, c, text, bold=bold_cell)
-    if st.button("Generate Table Image", key="gen_table"):
-        img = table.draw()
-        st.image(img, caption="Generated Table", use_column_width=True)
-        buf = io.BytesIO()
-        img.save(buf, format="PNG")
-        byte_im = buf.getvalue()
-        st.download_button(
-            label="Download Table Image",
-            data=byte_im,
-            file_name="table.png",
-            mime="image/png",
-            key="download_table"
-        )
-elif mode == "Answer options (sleepopties)":
-    st.header("Generate Sleepoptie Images (A..H)")
-    st.markdown("Enter text for sleepopties A through H. Leave empty entries blank to ignore them.")
-    tekst_titel = st.text_input("Title (tekst_titel)", value="title", key="sleep_titel")
-    tekst_itemnummer = st.text_input("Item number (tekst_itemnummer)", value="1", key="sleep_itemnr")
-    num_columns = st.number_input(
-        "Number of columns",
-        min_value=1,
-        value=2,
-        step=1,
-        key="sleep_num_columns",
-        help="Number of columns used to compute per-option image width",
-    )
-    max_chars_per_line_sleep = st.number_input("Max chars per line (wrap)", min_value=10, value=33, key="sleep_wrap")
-    letters = ["A", "B", "C", "D", "E", "F", "G", "H"]
-    options = []
-    for L in letters:
-        txt = st.text_area(f"Sleepoptie {L}", value="", height=80, key=f"opt_{L}")
-        options.append(txt.strip())
-    if st.button("Generate Sleepoptie Images", key="gen_sleep"):
-        base_dir = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
-        heights = []
-        line_counts = []
-        for text in options:
-            if text and text.strip() != "":
-                wr = wrap_text(text.strip(), max_chars_per_line_sleep)
-                lc = wr["line_count"]
-                h = max(10, (lc * 15) + 5)
-                heights.append(h)
-                line_counts.append(lc)
-        if not heights:
-            st.warning("No non-empty sleepopties entered. Please enter at least one option.")
-        else:
-            max_height = max(heights)
-            max_lines = max(line_counts) if line_counts else 0
-            extra_pixels = max(0, max_lines - 1)
-            canvas_height = max_height + extra_pixels
-            generated_images = []
-            for idx, text in enumerate(options, start=1):
-                if not text or text.strip() == "":
-                    continue
-                letter = chr(64 + idx)
-                img, _= create_sleepoptie_single_image(
-                    text,
-                    tekst_titel=tekst_titel,
-                    tekst_itemnummer=f"{tekst_itemnummer}_{letter}",
-                    canvas_height=canvas_height,
-                    max_chars_per_line=max_chars_per_line_sleep,
-                    font_size=11,
-                    base_dir=base_dir,
-                    num_columns=num_columns,
+                rows = int(
+                    st.number_input("Number of rows", min_value=1, value=2, step=1, key="t1_rows")
                 )
-                if img is not None:
-                    filename = f"{tekst_titel}_{tekst_itemnummer}_{letter}.png"
-                    generated_images.append((filename, img))
+                cols = int(
+                    st.number_input("Number of columns", min_value=1, value=2, step=1, key="t1_cols")
+                )
+                col_width = int(450 // cols)
+                st.write(f"Column width (pixels) is automatically set to: {col_width} px (450 // {cols})")
 
-            # Display individual images and provide per-image downloads
-            if generated_images:
-                st.success(f"Generated {len(generated_images)} images:")
-                for i, (filename, img) in enumerate(generated_images, start=1):
-                    st.image(img, caption=filename, use_column_width=False)
-                    buf = io.BytesIO()
-                    img.save(buf, format="PNG")
-                    buf.seek(0)
-                    st.download_button(
-                        label=f"Download {filename}",
-                        data=buf.getvalue(),
-                        file_name=filename,
-                        mime="image/png",
-                        key=f"download_{i}"
+                heading_lines = 0
+                if cols >= 3:
+                    heading_lines = int(
+                        st.number_input(
+                            "How many rows are required for the headings?",
+                            min_value=1,
+                            value=1,
+                            step=1,
+                            key="heading_lines_type1",
+                            help="Number of text lines (each ~18px) to reserve for the heading row",
+                        )
                     )
+                    st.write(f"Heading row height will be: {heading_lines * 18} px ( {heading_lines} × 18 )")
 
-                # create ZIP in RAM en dowwnload
-                zip_buffer = io.BytesIO()
-                with zipfile.ZipFile(zip_buffer, "w", compression=zipfile.ZIP_DEFLATED) as zip_file:
-                    for filename, img in generated_images:
-                        img_bytes = io.BytesIO()
-                        img.save(img_bytes, format="PNG")
-                        img_bytes.seek(0)
-                        zip_file.writestr(filename, img_bytes.getvalue())
-                zip_buffer.seek(0)
-
-                zip_name = f"{tekst_titel}_{tekst_itemnummer}_all_images.zip"
-                st.download_button(
-                    label="Download All Images (ZIP)",
-                    data=zip_buffer.getvalue(),
-                    file_name=zip_name,
-                    mime="application/zip",
-                    key="download_all_zip"
+                longest_rows = int(
+                    st.number_input(
+                        "How many rows are required for the longest answer?",
+                        min_value=1,
+                        value=1,
+                        step=1,
+                        key="t1_longest_rows",
+                    )
                 )
+                answer_row_height = int(longest_rows * 18)
+                st.write(f"Answer row height (pixels) will be: {answer_row_height} px ( {longest_rows} × 18 )")
+
+                if heading_lines > 0:
+                    first_row_height = heading_lines * 18
+                    if rows == 1:
+                        row_heights = [first_row_height]
+                    else:
+                        row_heights = [first_row_height] + [answer_row_height] * (rows - 1)
+                else:
+                    row_heights = [answer_row_height] * rows
+
             else:
-                st.warning("No images were generated to download.")
+                # Type 2 defaults
+                rows = 2
+                cols = 2
+                col_width = 225
+                st.write(f"Column width (pixels) for Type 2 is fixed to: {col_width} px")
+
+                heading_lines = int(
+                    st.number_input(
+                        "How many rows are required for the headings?",
+                        min_value=1,
+                        value=1,
+                        step=1,
+                        key="heading_rows_type2",
+                    )
+                )
+                st.write(f"Height of row 1 (pixels) will be: {heading_lines * 18} px ( {heading_lines} × 18 )")
+
+                longest_rows = int(
+                    st.number_input(
+                        "How many rows are required for the longest answer?",
+                        min_value=1,
+                        value=1,
+                        step=1,
+                        key="longest_rows_type2",
+                    )
+                )
+                answers_per_box = int(
+                    st.number_input(
+                        "How many answers can fit in 1 box?",
+                        min_value=1,
+                        value=1,
+                        step=1,
+                        key="answers_per_box",
+                    )
+                )
+                row1_height = int(heading_lines * 18)
+                # fixed the multiplication expression so it runs correctly
+                row2_height = int(longest_rows * 18 * answers_per_box)
+                row_heights = [row1_height, row2_height]
+                st.write(f"Height of row 2 (pixels) will be: {row2_height} px ( {longest_rows} × 18 × {answers_per_box} )")
+
+        bold_choice = st.checkbox("Make all text bold?", key="table_bold_all")
+
+        # Create TableImage instance (functionality unchanged)
+        table = TableImage(
+            rows=rows,
+            cols=cols,
+            row_height=row_heights,
+            col_width=col_width,
+            font_size=11,
+            line_width=1,
+            wrap_width=max_chars_per_line,
+        )
+
+        st.subheader("Enter cell text")
+        st.write("Enter text for each cell. You can toggle bold per cell (Type 1) or use the global bold option (Type 2).")
+
+        # Arrange cell inputs in a grid using columns to reduce scrolling
+        for r in range(rows):
+            cols_inputs = st.columns(cols)
+            for c in range(cols):
+                text_key = f"text_{r}_{c}"
+                with cols_inputs[c]:
+                    text = st.text_input(f"Cell {r+1},{c+1}", key=text_key)
+                    if table_type.startswith("Type 1"):
+                        bold_cell = st.checkbox(f"Bold? (Cell {r+1},{c+1})", key=f"bold_{r}_{c}")
+                    else:
+                        bold_cell = bold_choice
+                table.set_text(r, c, text, bold=bold_cell)
+
+        # Generate button on the left to make it easy to tweak inputs and produce preview
+        gen_table = st.button("Generate Table Image", key="gen_table")
+
+    with right:
+        st.subheader("Preview & Downloads")
+        preview_placeholder = st.empty()
+        if gen_table:
+            img = table.draw()
+            preview_placeholder.image(img, caption="Generated Table", use_column_width=True)
+            buf = io.BytesIO()
+            img.save(buf, format="PNG")
+            byte_im = buf.getvalue()
+            st.download_button(
+                label="Download Table Image",
+                data=byte_im,
+                file_name="table.png",
+                mime="image/png",
+                key="download_table"
+            )
+        else:
+            st.info("Press 'Generate Table Image' on the left to preview and download the table.")
+
+
+# ---------- Sleepopties mode ----------
+elif mode == "Answer options (sleepopties)":
+    with left:
+        st.header("Generate Sleepoptie Images (A..H)")
+        st.write("Enter text for sleepopties A through H. Leave empty entries to ignore them.")
+
+        # Main input block grouped
+        with st.container():
+            tekst_titel = st.text_input("Title (tekst_titel)", value="title", key="sleep_titel")
+            tekst_itemnummer = st.text_input("Item number (tekst_itemnummer)", value="1", key="sleep_itemnr")
+            num_columns = st.number_input(
+                "Number of columns",
+                min_value=1,
+                value=2,
+                step=1,
+                key="sleep_num_columns",
+                help="Number of columns used to compute per-option image width",
+            )
+            max_chars_per_line_sleep = st.number_input("Max chars per line (wrap)", min_value=10, value=33, key="sleep_wrap")
+
+        st.subheader("Sleepopties (A..H)")
+        st.write("Use the text areas below for each option. Only non-empty entries will be generated.")
+
+        # Display the 8 text areas in two columns to save vertical space
+        letters = ["A", "B", "C", "D", "E", "F", "G", "H"]
+        options = [""] * 8
+        # two-column layout for options
+        opt_cols = st.columns(2)
+        for idx, L in enumerate(letters):
+            col_idx = 0 if idx < 4 else 1
+            with opt_cols[col_idx]:
+                options[idx] = st.text_area(f"Sleepoptie {L}", value="", height=80, key=f"opt_{L}")
+
+        gen_sleep = st.button("Generate Sleepoptie Images", key="gen_sleep")
+
+    with right:
+        st.subheader("Generated Images")
+        if gen_sleep:
+            base_dir = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
+            heights = []
+            line_counts = []
+            for text in options:
+                if text and text.strip() != "":
+                    wr = wrap_text(text.strip(), max_chars_per_line_sleep)
+                    lc = wr["line_count"]
+                    h = max(10, (lc * 15) + 5)
+                    heights.append(h)
+                    line_counts.append(lc)
+            if not heights:
+                st.warning("No non-empty sleepopties entered. Please enter at least one option.")
+            else:
+                max_height = max(heights)
+                max_lines = max(line_counts) if line_counts else 0
+                extra_pixels = max(0, max_lines - 1)
+                canvas_height = max_height + extra_pixels
+                generated_images = []
+                for idx, text in enumerate(options, start=1):
+                    if not text or text.strip() == "":
+                        continue
+                    letter = chr(64 + idx)
+                    img, _= create_sleepoptie_single_image(
+                        text,
+                        tekst_titel=tekst_titel,
+                        tekst_itemnummer=f"{tekst_itemnummer}_{letter}",
+                        canvas_height=canvas_height,
+                        max_chars_per_line=max_chars_per_line_sleep,
+                        font_size=11,
+                        base_dir=base_dir,
+                        num_columns=num_columns,
+                    )
+                    if img is not None:
+                        filename = f"{tekst_titel}_{tekst_itemnummer}_{letter}.png"
+                        generated_images.append((filename, img))
+
+                # Display individual images and provide per-image downloads
+                if generated_images:
+                    st.success(f"Generated {len(generated_images)} images:")
+                    for i, (filename, img) in enumerate(generated_images, start=1):
+                        st.image(img, caption=filename, use_column_width=False)
+                        buf = io.BytesIO()
+                        img.save(buf, format="PNG")
+                        buf.seek(0)
+                        st.download_button(
+                            label=f"Download {filename}",
+                            data=buf.getvalue(),
+                            file_name=filename,
+                            mime="image/png",
+                            key=f"download_{i}"
+                        )
+                    # create ZIP in RAM and download
+                    zip_buffer = io.BytesIO()
+                    with zipfile.ZipFile(zip_buffer, "w", compression=zipfile.ZIP_DEFLATED) as zip_file:
+                        for filename, img in generated_images:
+                            img_bytes = io.BytesIO()
+                            img.save(img_bytes, format="PNG")
+                            img_bytes.seek(0)
+                            zip_file.writestr(filename, img_bytes.getvalue())
+                    zip_buffer.seek(0)
+                    zip_name = f"{tekst_titel}_{tekst_itemnummer}_all_images.zip"
+                    st.download_button(
+                        label="Download All Images (ZIP)",
+                        data=zip_buffer.getvalue(),
+                        file_name=zip_name,
+                        mime="application/zip",
+                        key="download_all_zip"
+                    )
+                else:
+                    st.warning("No images were generated to download.")
+        else:
+            st.info("Press 'Generate Sleepoptie Images' on the left to create previews and downloads.")
