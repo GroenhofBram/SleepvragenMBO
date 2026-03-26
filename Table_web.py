@@ -6,7 +6,7 @@ import os
 import math
 import zipfile
 
-# TableImage (unchanged functionality)
+# TableImage 
 class TableImage:
     def __init__(
         self,
@@ -145,7 +145,7 @@ def wrap_text(text, width):
     return {"wrapped_text": "\n".join(wrapped_lines), "line_count": lines_for_curr_text}
 
 
-# sleepopties image creation (unchanged functionality)
+# sleepopties 
 def create_sleepoptie_single_image(
     text,
     tekst_titel="title",
@@ -217,61 +217,60 @@ left, right = st.columns([1, 1.2])
 # ---------- Tables mode ----------
 if mode == "Tabel Maken":
     with left:
-        st.header("Sleepvragen Maker")
-
         # Table type and general options grouped
         st.subheader("Algemene instellingen")
         table_type = st.selectbox(
-            "Select table type",
+            "Selecteer het Type sleepvraag",
             ("Type 1 (graphic gapmatch)", "Type 2 (graphic gapmatch categorize)"),
         )
         max_chars_per_line = st.number_input(
-            "Max chars per line (wrap) for table cells",
+            "Kies het aantal karakters per regel",
             min_value=5,
             max_value=200,
             value=33,
             step=1,
-            help="How many characters before wrapping inside each table cell",
+            help="Na hoeveel karakters moet er een enter komen? Verlaag de waarde als je in het plaatje ziet dat er eerder een enter moet komen.",
             key="table_wrap_width",
         )
 
-        # Group size controls in an expander
-        with st.expander("Afmetingen & rijen/kolommen (Size & rows/cols)", expanded=True):
+        
+        with st.expander("Instellingen voor de afmetingen van de tabel", expanded=True):
             if table_type.startswith("Type 1"):
                 rows = int(
-                    st.number_input("Number of rows", min_value=1, value=2, step=1, key="t1_rows")
+                    st.number_input("Hoeveel regels heeft de tabel?", min_value=1, value=2, step=1, key="t1_rows")
                 )
                 cols = int(
-                    st.number_input("Number of columns", min_value=1, value=2, step=1, key="t1_cols")
+                    st.number_input("Hoeveel kolommen heeft de tabel?", min_value=1, value=2, step=1, key="t1_cols")
                 )
                 col_width = int(450 // cols)
-                st.write(f"Column width (pixels) is automatically set to: {col_width} px (450 // {cols})")
+                st.write(f"Met deze instellingen wordt de kolombreedte {col_width} pixels (450 // {cols})")
 
                 heading_lines = 0
                 if cols >= 3:
                     heading_lines = int(
                         st.number_input(
-                            "How many rows are required for the headings?",
+                            "Hoeveel regels zijn nodig voor de kop van de tabel?",
                             min_value=1,
                             value=1,
                             step=1,
                             key="heading_lines_type1",
-                            help="Number of text lines (each ~18px) to reserve for the heading row",
+                            help="Deze optie is alleen relevant bij 3 of meer kolommen. Omdat er meer kolommen zijn, is er minder ruimte voor de tekst. Daarom kan het zijn dat je meerdere regels nodig hebt. Kijk even goed wat er gebeurt als je hier wat aanpast en wat er gebeurt als je de waarde van 'Kies het aantal karakters per regel' aanpast",
                         )
                     )
-                    st.write(f"Heading row height will be: {heading_lines * 18} px ( {heading_lines} × 18 )")
+                    st.write(f"De eerste rij van de tabel (de kop van de tabel) wordt {heading_lines * 18} pixels ( {heading_lines} × 18 )")
 
                 longest_rows = int(
                     st.number_input(
-                        "How many rows are required for the longest answer?",
+                        "Hoeveel regels zijn nodig voor het langste antwoord?",
                         min_value=1,
                         value=1,
                         step=1,
                         key="t1_longest_rows",
+                        help="Kijk bij de afbeeldingen die je gemaakt hebt voor de sleepopties hoeveel regels tekst het langste antwoord heeft.",
                     )
                 )
                 answer_row_height = int(longest_rows * 18)
-                st.write(f"Answer row height (pixels) will be: {answer_row_height} px ( {longest_rows} × 18 )")
+                st.write(f"De rijen waar de antwoorden in gesleept moeten worden worden {answer_row_height} pixels ( {longest_rows} × 18 )")
 
                 if heading_lines > 0:
                     first_row_height = heading_lines * 18
@@ -287,46 +286,49 @@ if mode == "Tabel Maken":
                 rows = 2
                 cols = 2
                 col_width = 225
-                st.write(f"Column width (pixels) for Type 2 is fixed to: {col_width} px")
+                st.write(f"De kolombreedte voor Type 2 is altijd hetzelfde: {col_width} pixels")
 
                 heading_lines = int(
                     st.number_input(
-                        "How many rows are required for the headings?",
+                        "Hoeveel regels zijn nodig voor de kop van de tabel?",
                         min_value=1,
                         value=1,
                         step=1,
                         key="heading_rows_type2",
+                        help="Kijk even goed wat er gebeurt als je hier wat aanpast en wat er gebeurt als je de waarde van 'Kies het aantal karakters per regel' aanpast",
                     )
                 )
-                st.write(f"Height of row 1 (pixels) will be: {heading_lines * 18} px ( {heading_lines} × 18 )")
+                st.write(f"De eerste rij van de tabel (de kop van de tabel) wordt {heading_lines * 18} pixels ( {heading_lines} × 18 )")
 
                 longest_rows = int(
                     st.number_input(
-                        "How many rows are required for the longest answer?",
+                        "Hoeveel regels zijn nodig voor het langste antwoord?",
                         min_value=1,
                         value=1,
                         step=1,
                         key="longest_rows_type2",
+                        help="Kijk bij de afbeeldingen die je gemaakt hebt voor de sleepopties hoeveel regels tekst het langste antwoord heeft.",
                     )
                 )
                 answers_per_box = int(
                     st.number_input(
-                        "How many answers can fit in 1 box?",
+                        "Hoeveel sleepopties moeten er in 1 sleepvak kunnen?",
                         min_value=1,
                         value=1,
                         step=1,
                         key="answers_per_box",
+                        help="Dit is meestal het aantal sleepopties - 1, tenzij er specifiek in de vraag wordt aangegeven dat er X aantal in moet.",
                     )
                 )
                 row1_height = int(heading_lines * 18)
                 # fixed the multiplication expression so it runs correctly
                 row2_height = int(longest_rows * 18 * answers_per_box)
                 row_heights = [row1_height, row2_height]
-                st.write(f"Height of row 2 (pixels) will be: {row2_height} px ( {longest_rows} × 18 × {answers_per_box} )")
+                st.write(f"De rij waar de antwoorden in gesleept moeten worden wordt {row2_height} pixels ( {longest_rows} × 18 × {answers_per_box} )")
 
-        bold_choice = st.checkbox("Make all text bold?", key="table_bold_all")
+        bold_choice = st.checkbox("Vink dit aan als de tekst dikgedrukt moet zijn", key="table_bold_all")
 
-        # Create TableImage instance (functionality unchanged)
+        # Create TableImage instance 
         table = TableImage(
             rows=rows,
             cols=cols,
@@ -337,8 +339,8 @@ if mode == "Tabel Maken":
             wrap_width=max_chars_per_line,
         )
 
-        st.subheader("Enter cell text")
-        st.write("Enter text for each cell. You can toggle bold per cell (Type 1) or use the global bold option (Type 2).")
+        st.subheader("Vul de benodigde tekst per cel van de tabel in, de cellen staan op dezelfde volgorde als de tabel (cel 1.1 is linksboven etc.).")
+        st.write("Vul de benodigde tekst per cel van de tabel in, de cellen staan op dezelfde volgorde als de tabel (cel 1.1 is linksboven etc.).")
 
         # Arrange cell inputs in a grid using columns to reduce scrolling
         for r in range(rows):
@@ -357,7 +359,7 @@ if mode == "Tabel Maken":
         gen_table = st.button("Generate Table Image", key="gen_table")
 
     with right:
-        st.subheader("Preview & Downloads")
+        st.subheader("Preview & Downloaden")
         preview_placeholder = st.empty()
         if gen_table:
             img = table.draw()
@@ -366,14 +368,13 @@ if mode == "Tabel Maken":
             img.save(buf, format="PNG")
             byte_im = buf.getvalue()
             st.download_button(
-                label="Download Table Image",
+                label="Download het plaatje",
                 data=byte_im,
                 file_name="table.png",
                 mime="image/png",
                 key="download_table"
             )
-        else:
-            st.info("Press 'Generate Table Image' on the left to preview and download the table.")
+
 
 
 # ---------- Sleepopties mode ----------
