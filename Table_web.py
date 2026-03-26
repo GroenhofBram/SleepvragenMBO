@@ -250,7 +250,7 @@ if mode == "Tabel Maken":
         with st.expander("Instellingen voor de afmetingen van de tabel", expanded=True):
             if table_type.startswith("Type 1"):
                 rows = int(
-                    st.number_input("Hoeveel regels heeft de tabel?", min_value=1, value=2, step=1, key="t1_rows")
+                    st.number_input("Hoeveel rijen heeft de tabel?", min_value=1, value=2, step=1, key="t1_rows")
                 )
                 cols = int(
                     st.number_input("Hoeveel kolommen heeft de tabel?", min_value=1, value=2, step=1, key="t1_cols")
