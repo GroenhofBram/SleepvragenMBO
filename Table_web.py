@@ -18,7 +18,7 @@ def safe_filename(s):
     
 # TableImage
 class TableImage:
-    def __init__(
+    def **init**(
         self,
         rows,
         cols,
