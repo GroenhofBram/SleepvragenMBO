@@ -199,25 +199,84 @@ def create_sleepoptie_single_image(
     filename = f"{tekst_titel}_{tekst_itemnummer}.png"
     return img, filename
 st.set_page_config(page_title="Sleepoptie en Tabel Generator", layout="wide")
+
 st.markdown(
     """
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Pacifico&family=Poppins:wght@300;400;600&display=swap');
-    html, body, [data-testid="stAppViewContainer"] {background: linear-gradient(135deg, #fff0f6 0%, #fffaf0 50%, #f0fff4 100%);}
-    .block-container { border-radius:16px; padding:32px; background: rgba(255,255,255,0.75); box-shadow: 0 8px 30px rgba(255,182,193,0.18); }
-    .stButton>button, .stDownloadButton>button, button { background: linear-gradient(90deg,#ffb3d9,#ff80c8); color: #ffffff; border: none; padding: 8px 14px; border-radius: 12px; box-shadow: 0 6px 18px rgba(255,105,180,0.14); font-weight:600; font-family: 'Poppins', sans-serif; }
-    .stButton>button:hover, .stDownloadButton>button:hover, button:hover { transform: translateY(-1px); opacity:0.95; }
-    input[type="text"], textarea, .stTextInput>div>input, .stTextArea>div>textarea { border-radius: 10px; border: 1px solid #ffd6ea; background: linear-gradient(180deg,#fff,#fff7fb); padding:8px; box-shadow: inset 0 2px 8px rgba(255,182,193,0.06); font-family: 'Poppins', sans-serif; }
-    textarea { min-height: 80px; }
-    h1, h2, h3, h4, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 { font-family: 'Pacifico', 'Poppins', sans-serif; color: #ff4d9e; }
-    .stInfo, .stWarning, .stSuccess, .stError { border-radius: 12px; padding: 12px; font-family: 'Poppins', sans-serif; }
-    label, .css-1q8dd3e.egzxvld1 { font-family: 'Poppins', sans-serif; color: #ff4d9e; }
-    .stSelectbox>div, .stMultiSelect>div { border-radius: 10px; }
-    footer { visibility: hidden; }
+      /* Page background */
+      html, body, [data-testid="stAppViewContainer"] {
+        background: #000000 !important;
+        color: #ffffff;
+      }
+
+      /* Main content container */
+      .block-container {
+        border-radius: 16px;
+        padding: 32px;
+        background: rgba(0,0,0,0.85);
+        box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+        color: #ffffff;
+      }
+
+      /* Headings and labels */
+      h1, h2, h3, h4, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 {
+        color: #ff7ab6;
+        font-family: 'Pacifico', 'Poppins', sans-serif;
+      }
+      label, .css-1q8dd3e.egzxvld1 {
+        color: #ff7ab6;
+        font-family: 'Poppins', sans-serif;
+      }
+
+      /* Inputs / textareas */
+      input[type="text"], textarea, .stTextInput>div>input, .stTextArea>div>textarea {
+        border-radius: 10px;
+        border: 1px solid rgba(255,122,182,0.18);
+        background: rgba(255,255,255,0.03);
+        color: #ffffff;
+        padding: 8px;
+        box-shadow: inset 0 2px 8px rgba(255,122,182,0.03);
+        font-family: 'Poppins', sans-serif;
+      }
+      textarea { min-height: 80px; color: #fff; }
+
+      /* Buttons / download buttons */
+      .stButton>button, .stDownloadButton>button, button {
+        background: linear-gradient(90deg,#ff5fa6,#ff80c8);
+        color: #ffffff;
+        border: none;
+        padding: 8px 14px;
+        border-radius: 12px;
+        box-shadow: 0 6px 18px rgba(255,105,180,0.14);
+        font-weight:600;
+        font-family: 'Poppins', sans-serif;
+      }
+      .stButton>button:hover, .stDownloadButton>button:hover, button:hover {
+        transform: translateY(-1px);
+        opacity:0.95;
+      }
+
+      /* Alerts */
+      .stInfo, .stWarning, .stSuccess, .stError {
+        border-radius: 12px;
+        padding: 12px;
+        font-family: 'Poppins', sans-serif;
+        color: #fff;
+        background: rgba(255,255,255,0.03);
+      }
+
+      /* Small tweaks for contrast on widgets */
+      .stSelectbox>div, .stMultiSelect>div { border-radius: 10px; }
+      .stSlider, .stRadio, .stCheckbox { color: #fff; }
+      .stMarkdown { color: #fff; }
+
+      /* Hide default footer */
+      footer { visibility: hidden; }
     </style>
     """,
     unsafe_allow_html=True,
 )
+
 st.info("Laatste Update: 2026-03-26")
 st.caption("Links vul je informatie in, rechts zie je de plaatjes.")
 mode = st.selectbox(
