@@ -209,14 +209,14 @@ def create_sleepoptie_single_image(
     return img, filename
 
 
-# ---------- UI (layout-only changes) ----------
+
 st.set_page_config(page_title="Sleepoptie en Tabel Generator", layout="wide")
 st.info("Laatste Update: 2026-03-26")
 st.caption("Links vul je informatie in, rechts zie je de plaatjes.")
 
-# Keep the same mode selection but place it more prominently
+
 mode = st.selectbox(
-    "Select mode",
+    "Tabel maken of Sleepopties maken?",
     ["Tabel Maken", "Sleepopties Maken"],
     index=0,
 )
@@ -228,10 +228,7 @@ left, right = st.columns([1, 1.2])
 if mode == "Tabel Maken":
     with left:
         # Voeg hier Vakcode toe
-        vakcode = st.text_input("Vakcode (optioneel)", value="", key="table_vakcode")
-        # Table type and general options grouped
-        st.subheader("Algemene instellingen")
-        # Nieuwe invoervelden
+        vakcode = st.text_input("Vak", value="", key="table_vakcode")
         tekst_titel = st.text_input("Titel van de tekst", value="title", key="table_titel")
         tekst_itemnummer = st.text_input("Item nummer", value="1", key="table_itemnr")
         table_type = st.selectbox(
@@ -480,7 +477,7 @@ elif mode == "Sleepopties Maken":
                 zip_buffer.seek(0)
                 zip_name = prefix + f"{safe_filename(tekst_titel)}_{tekst_itemnummer}_alle_sleepopties.zip"
                 st.download_button(
-                    label="Download All Images (ZIP)",
+                    label="Download alle plaatjes in 1 keer (.zip)",
                     data=zip_buffer.getvalue(),
                     file_name=safe_filename(zip_name) or "sleepopties.zip",
                     mime="application/zip",
