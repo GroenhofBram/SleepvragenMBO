@@ -341,7 +341,8 @@ if mode == "Tabel Maken":
         )
 
         st.subheader("Vul de benodigde tekst per cel van de tabel in, de cellen staan op dezelfde volgorde als de tabel (cel 1.1 is linksboven etc.).")
-
+        if table_type.startswith("Type 2"):
+            bold_choice = st.checkbox("Vink dit aan als de tekst dikgedrukt moet zijn", key="table_bold_all")
         # Arrange cell inputs in a grid using columns to reduce scrolling
         for r in range(rows):
             cols_inputs = st.columns(cols)
@@ -350,13 +351,11 @@ if mode == "Tabel Maken":
                 with cols_inputs[c]:
                     text = st.text_input(f"Cell {r+1},{c+1}", key=text_key)
                     if table_type.startswith("Type 1"):
-                        bold_cell = st.checkbox(f"Bold? (Cell {r+1},{c+1})", key=f"bold_{r}_{c}")
+                        bold_cell = st.checkbox(f"maak tekst dikgedrukt (Cell {r+1},{c+1})", key=f"bold_{r}_{c}")
                     else:
                         bold_cell = bold_choice
                 table.set_text(r, c, text, bold=bold_cell)
-        
-        if table_type.startswith("Type 2"):
-            bold_choice = st.checkbox("Vink dit aan als de tekst dikgedrukt moet zijn", key="table_bold_all")
+    
         
         # Generate button on the left to make it easy to tweak inputs and produce preview
         gen_table = st.button("Generate Table Image", key="gen_table")
