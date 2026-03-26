@@ -130,6 +130,7 @@ class TableImage:
         fmt = "PNG" if ext == ".png" else "JPEG"
         img.save(filename, fmt)
 
+
 def wrap_text(text, width):
     if text is None or str(text).strip() == "":
         return {"wrapped_text": "", "line_count": 0}
@@ -152,6 +153,7 @@ def wrap_text(text, width):
         wrapped_lines.append(current_line)
         lines_for_curr_text += 1
     return {"wrapped_text": "\n".join(wrapped_lines), "line_count": lines_for_curr_text}
+
 
 # sleepopties
 def create_sleepoptie_single_image(
@@ -206,6 +208,7 @@ def create_sleepoptie_single_image(
     filename = f"{tekst_titel}_{tekst_itemnummer}.png"
     return img, filename
 
+
 # ---------- UI (layout-only changes) ----------
 st.set_page_config(page_title="Sleepoptie en Tabel Generator", layout="wide")
 st.info("Laatste Update: 2026-03-26")
@@ -224,12 +227,13 @@ left, right = st.columns([1, 1.2])
 # ---------- Tables mode ----------
 if mode == "Tabel Maken":
     with left:
+        # Voeg hier Vakcode toe
+        vakcode = st.text_input("Vakcode (optioneel)", value="", key="table_vakcode")
         # Table type and general options grouped
         st.subheader("Algemene instellingen")
-        # New: Titel en itemnummer voor de tabelmode (zoals bij sleepopties)
+        # Nieuwe invoervelden
         tekst_titel = st.text_input("Titel van de tekst", value="title", key="table_titel")
         tekst_itemnummer = st.text_input("Item nummer", value="1", key="table_itemnr")
-
         table_type = st.selectbox(
             "Selecteer het Type sleepvraag",
             ("Type 1 (graphic gapmatch)", "Type 2 (graphic gapmatch categorize)"),
@@ -324,7 +328,6 @@ if mode == "Tabel Maken":
                     )
                 )
                 row1_height = int(heading_lines * 18)
-                # fixed multiplication expression
                 row2_height = int(longest_rows * 18 * answers_per_box)
                 row_heights = [row1_height, row2_height]
                 st.write(f"De rij waar de antwoorden in gesleept moeten worden wordt {row2_height} pixels ( {longest_rows} × 18 × {answers_per_box} )")
@@ -339,7 +342,6 @@ if mode == "Tabel Maken":
             line_width=1,
             wrap_width=max_chars_per_line,
         )
-
         st.subheader("Vul de benodigde tekst per cel van de tabel in, de cellen staan op dezelfde volgorde als de tabel (cel 1.1 is linksboven etc.).")
         if table_type.startswith("Type 2"):
             bold_choice = st.checkbox("Vink dit aan als de tekst dikgedrukt moet zijn", key="table_bold_all")
@@ -365,9 +367,8 @@ if mode == "Tabel Maken":
         # Generate preview automatically (no button). Streamlit reruns when any input changes.
         try:
             img = table.draw()
-            # construct safe filename using the inputs we added
-            fname = f"{tekst_titel}_{tekst_itemnummer}_tabel.png"
-            fname_safe = safe_filename(fname) or "table.png"
+            prefix = (safe_filename(vakcode) + "_") if (vakcode and str(vakcode).strip()) else ""
+            fname_safe = prefix + (safe_filename(f"{tekst_titel}_{tekst_itemnummer}_tabel.png") or "table.png")
             preview_placeholder.image(img, caption=f"Generated Table — {fname_safe}", use_column_width=True)
             buf = io.BytesIO()
             img.save(buf, format="PNG")
@@ -385,8 +386,10 @@ if mode == "Tabel Maken":
 # ---------- Sleepopties mode ----------
 elif mode == "Sleepopties Maken":
     with left:
+
+        vakcode = st.text_input("Vakcode (optioneel)", value="", key="sleep_vakcode")
         st.header("Sleepopties genereren")
-        # Main input block grouped
+
         with st.container():
             tekst_titel = st.text_input("Titel van de tekst", value="title", key="sleep_titel")
             tekst_itemnummer = st.text_input("Item nummer", value="1", key="sleep_itemnr")
@@ -399,6 +402,7 @@ elif mode == "Sleepopties Maken":
                 help="Dit is nodig om de grootte van de plaatjes goed te krijgen.",
             )
             max_chars_per_line_sleep = st.number_input("Kies het aantal karakters per regel", min_value=10, value=33, key="sleep_wrap")
+
         st.subheader("Sleepopties")
         st.write("Laat sleepopties die je niet nodig hebt leeg.")
         # Display the 8 text areas in two columns to save vertical space
@@ -410,9 +414,9 @@ elif mode == "Sleepopties Maken":
             col_idx = 0 if idx < 4 else 1
             with opt_cols[col_idx]:
                 options[idx] = st.text_area(f"Sleepoptie {L}", value="", height=80, key=f"opt_{L}")
+
     with right:
         st.subheader("Gegenereerde plaatjes")
-        # Automatically generate when any input changes
         base_dir = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
         heights = []
         line_counts = []
@@ -431,6 +435,7 @@ elif mode == "Sleepopties Maken":
             extra_pixels = max(0, max_lines - 1)
             canvas_height = max_height + extra_pixels
             generated_images = []
+            prefix = (safe_filename(vakcode) + "_") if (vakcode and str(vakcode).strip()) else ""
             for idx, text in enumerate(options, start=1):
                 if not text or text.strip() == "":
                     continue
@@ -446,9 +451,10 @@ elif mode == "Sleepopties Maken":
                     num_columns=num_columns,
                 )
                 if img is not None:
-                    filename = f"{tekst_titel}_{tekst_itemnummer}_{letter}.png"
+                    filename = prefix + f"{safe_filename(tekst_titel)}_{tekst_itemnummer}_{letter}.png"
                     generated_images.append((filename, img))
-            # Display individual images and provide per-image downloads
+
+            
             if generated_images:
                 st.success(f"Gegenereerde {len(generated_images)} plaatjes:")
                 for i, (filename, img) in enumerate(generated_images, start=1):
@@ -472,7 +478,7 @@ elif mode == "Sleepopties Maken":
                         img_bytes.seek(0)
                         zip_file.writestr(safe_filename(filename) or filename, img_bytes.getvalue())
                 zip_buffer.seek(0)
-                zip_name = f"{tekst_titel}_{tekst_itemnummer}_alle_sleepopties.zip"
+                zip_name = prefix + f"{safe_filename(tekst_titel)}_{tekst_itemnummer}_alle_sleepopties.zip"
                 st.download_button(
                     label="Download All Images (ZIP)",
                     data=zip_buffer.getvalue(),
