@@ -6,7 +6,6 @@ import os
 import math
 import zipfile
 import re
-
 # helper to create safe filenames
 def safe_filename(s):
     if s is None:
@@ -15,10 +14,9 @@ def safe_filename(s):
     s = s.replace(" ", "_")
     s = re.sub(r"[^A-Za-z0-9._-]", "", s)
     return s
-    
 # TableImage
 class TableImage:
-    def **init**(
+    def __init__(
         self,
         rows,
         cols,
@@ -330,7 +328,7 @@ if mode == "Tabel Maken":
                     )
                 )
                 row1_height = int(heading_lines * 18)
-                row2_height = int(longest_rows _18_ answers_per_box)
+                row2_height = int(longest_rows * 18 * answers_per_box)
                 row_heights = [row1_height, row2_height]
                 st.write(f"De rij waar de antwoorden in gesleept moeten worden wordt {row2_height} pixels ( {longest_rows} × 18 × {answers_per_box} )")
         # Create TableImage instance
