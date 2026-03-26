@@ -379,25 +379,24 @@ if mode == "Tabel Maken":
 # ---------- Sleepopties mode ----------
 elif mode == "Sleepopties Maken":
     with left:
-        st.header("Generate Sleepoptie Images (A..H)")
-        st.write("Enter text for sleepopties A through H. Leave empty entries to ignore them.")
+        st.header("Sleepopties genereren")
 
         # Main input block grouped
         with st.container():
-            tekst_titel = st.text_input("Title (tekst_titel)", value="title", key="sleep_titel")
-            tekst_itemnummer = st.text_input("Item number (tekst_itemnummer)", value="1", key="sleep_itemnr")
+            tekst_titel = st.text_input("Titel van de tekst", value="title", key="sleep_titel")
+            tekst_itemnummer = st.text_input("Item nummer", value="1", key="sleep_itemnr")
             num_columns = st.number_input(
-                "Number of columns (in table)",
+                "Hoeveel kolommen heeft de tabel?",
                 min_value=1,
                 value=2,
                 step=1,
                 key="sleep_num_columns",
-                help="Number of columns used to compute per-option image width",
+                help="Dit is nodig om de grootte van de plaatjes goed te krijgen.",
             )
-            max_chars_per_line_sleep = st.number_input("Max chars per line (wrap)", min_value=10, value=33, key="sleep_wrap")
+            max_chars_per_line_sleep = st.number_input("Kies het aantal karakters per regel", min_value=10, value=33, key="sleep_wrap")
 
-        st.subheader("Sleepopties (A..H)")
-        st.write("Use the text areas below for each option. Only non-empty entries will be generated.")
+        st.subheader("Sleepopties")
+        st.write("Laat sleepopties die je niet nodig hebt leeg.")
 
         # Display the 8 text areas in two columns to save vertical space
         letters = ["A", "B", "C", "D", "E", "F", "G", "H"]
@@ -409,10 +408,10 @@ elif mode == "Sleepopties Maken":
             with opt_cols[col_idx]:
                 options[idx] = st.text_area(f"Sleepoptie {L}", value="", height=80, key=f"opt_{L}")
 
-        gen_sleep = st.button("Generate Sleepoptie Images", key="gen_sleep")
+        gen_sleep = st.button("Genereer sleepopties", key="gen_sleep")
 
     with right:
-        st.subheader("Generated Images")
+        st.subheader("Gegenereerde plaatjes")
         if gen_sleep:
             base_dir = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
             heights = []
@@ -425,7 +424,7 @@ elif mode == "Sleepopties Maken":
                     heights.append(h)
                     line_counts.append(lc)
             if not heights:
-                st.warning("No non-empty sleepopties entered. Please enter at least one option.")
+                st.warning("Vul op z'n minst 1 sleepoptie in.")
             else:
                 max_height = max(heights)
                 max_lines = max(line_counts) if line_counts else 0
@@ -452,7 +451,7 @@ elif mode == "Sleepopties Maken":
 
                 # Display individual images and provide per-image downloads
                 if generated_images:
-                    st.success(f"Generated {len(generated_images)} images:")
+                    st.success(f"Gegenereerde {len(generated_images)} plaatjes:")
                     for i, (filename, img) in enumerate(generated_images, start=1):
                         st.image(img, caption=filename, use_column_width=False)
                         buf = io.BytesIO()
@@ -474,7 +473,7 @@ elif mode == "Sleepopties Maken":
                             img_bytes.seek(0)
                             zip_file.writestr(filename, img_bytes.getvalue())
                     zip_buffer.seek(0)
-                    zip_name = f"{tekst_titel}_{tekst_itemnummer}_all_images.zip"
+                    zip_name = f"{tekst_titel}_{tekst_itemnummer}_alle_sleepopties.zip"
                     st.download_button(
                         label="Download All Images (ZIP)",
                         data=zip_buffer.getvalue(),
@@ -482,7 +481,4 @@ elif mode == "Sleepopties Maken":
                         mime="application/zip",
                         key="download_all_zip"
                     )
-                else:
-                    st.warning("No images were generated to download.")
-        else:
-            st.info("Press 'Generate Sleepoptie Images' on the left to create previews and downloads.")
+
