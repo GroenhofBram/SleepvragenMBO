@@ -340,7 +340,6 @@ if mode == "Tabel Maken":
         )
 
         st.subheader("Vul de benodigde tekst per cel van de tabel in, de cellen staan op dezelfde volgorde als de tabel (cel 1.1 is linksboven etc.).")
-        st.write("Vul de benodigde tekst per cel van de tabel in, de cellen staan op dezelfde volgorde als de tabel (cel 1.1 is linksboven etc.).")
 
         # Arrange cell inputs in a grid using columns to reduce scrolling
         for r in range(rows):
