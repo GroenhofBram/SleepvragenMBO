@@ -388,7 +388,7 @@ elif mode == "Answer options (sleepopties)":
             tekst_titel = st.text_input("Title (tekst_titel)", value="title", key="sleep_titel")
             tekst_itemnummer = st.text_input("Item number (tekst_itemnummer)", value="1", key="sleep_itemnr")
             num_columns = st.number_input(
-                "Number of columns",
+                "Number of columns (in table)",
                 min_value=1,
                 value=2,
                 step=1,
