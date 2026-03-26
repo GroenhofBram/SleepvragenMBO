@@ -325,7 +325,7 @@ if mode == "Tabel Maken":
                 row2_height = int(longest_rows * 18 * answers_per_box)
                 row_heights = [row1_height, row2_height]
                 st.write(f"De rij waar de antwoorden in gesleept moeten worden wordt {row2_height} pixels ( {longest_rows} × 18 × {answers_per_box} )")
-                bold_choice = st.checkbox("Vink dit aan als de tekst dikgedrukt moet zijn", key="table_bold_all")
+                
 
 
 
@@ -354,7 +354,10 @@ if mode == "Tabel Maken":
                     else:
                         bold_cell = bold_choice
                 table.set_text(r, c, text, bold=bold_cell)
-
+        
+        if table_type.startswith("Type 2"):
+            bold_choice = st.checkbox("Vink dit aan als de tekst dikgedrukt moet zijn", key="table_bold_all")
+        
         # Generate button on the left to make it easy to tweak inputs and produce preview
         gen_table = st.button("Generate Table Image", key="gen_table")
 
