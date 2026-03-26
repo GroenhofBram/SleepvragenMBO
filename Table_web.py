@@ -369,7 +369,7 @@ if mode == "Tabel Maken":
             img = table.draw()
             prefix = (safe_filename(vakcode) + "_") if (vakcode and str(vakcode).strip()) else ""
             fname_safe = prefix + (safe_filename(f"{tekst_titel}_{tekst_itemnummer}_tabel.png") or "table.png")
-            preview_placeholder.image(img, caption=f"Generated Table — {fname_safe}", use_column_width=True)
+            preview_placeholder.image(img, caption=f"Gegenereerde Tabel — {fname_safe}", use_column_width=True)
             buf = io.BytesIO()
             img.save(buf, format="PNG")
             byte_im = buf.getvalue()
