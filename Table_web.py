@@ -200,14 +200,14 @@ def create_sleepoptie_single_image(
 
 
 # ---------- UI (layout-only changes) ----------
-st.set_page_config(page_title="Table & Sleepopties Generator", layout="wide")
-st.title("Table & Sleepopties Generator (aangepast)")
-st.caption("Tip: use the controls on the left to configure inputs, and see previews on the right.")
+st.set_page_config(page_title="Sleepoptie en Tabel Generator", layout="wide")
+st.info("Laatste Update: 2026-03-26")
+st.caption("Links vul je informatie in, rechts zie je de plaatjes.")
 
 # Keep the same mode selection but place it more prominently
 mode = st.selectbox(
     "Select mode",
-    ["Tables (original UI)", "Answer options (sleepopties)"],
+    ["Tabel Maken", "Sleepopties Maken"],
     index=0,
 )
 
@@ -215,10 +215,9 @@ mode = st.selectbox(
 left, right = st.columns([1, 1.2])
 
 # ---------- Tables mode ----------
-if mode == "Tables (original UI)":
+if mode == "Tabel Maken":
     with left:
         st.header("Sleepvragen Maker")
-        st.info("Laatste Update: 2026-03-26")
 
         # Table type and general options grouped
         st.subheader("Algemene instellingen")
@@ -378,7 +377,7 @@ if mode == "Tables (original UI)":
 
 
 # ---------- Sleepopties mode ----------
-elif mode == "Answer options (sleepopties)":
+elif mode == "Sleepopties Maken":
     with left:
         st.header("Generate Sleepoptie Images (A..H)")
         st.write("Enter text for sleepopties A through H. Leave empty entries to ignore them.")
