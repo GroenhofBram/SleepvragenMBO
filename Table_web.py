@@ -351,7 +351,7 @@ if mode == "Tabel Maken":
                 with cols_inputs[c]:
                     text = st.text_input(f"Cell {r+1},{c+1}", key=text_key)
                     if table_type.startswith("Type 1"):
-                        bold_cell = st.checkbox(f"maak tekst dikgedrukt (Cell {r+1},{c+1})", key=f"bold_{r}_{c}")
+                        bold_cell = st.checkbox(f"maak tekst dikgedrukt)", key=f"bold_{r}_{c}")
                     else:
                         bold_cell = bold_choice
                 table.set_text(r, c, text, bold=bold_cell)
