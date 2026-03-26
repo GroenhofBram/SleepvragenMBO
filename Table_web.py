@@ -197,7 +197,7 @@ def create_sleepoptie_single_image(
 st.title("Table & Sleepopties Generator (aangepast)")
 mode = st.selectbox("Choose mode", ["Tables (original UI)", "Answer options (sleepopties)"])
 if mode == "Tables (original UI)":
-    st.header("Sleepvragen Maker - (2026-03-20 - Laatste Update)")
+    st.header("Sleepvragen Maker - (2026-03-26 - Laatste Update)")
     table_type = st.selectbox(
         "Select table type",
         ("Type 1 (graphic gapmatch)", "Type 2 (graphic gapmatch categorize)"),
