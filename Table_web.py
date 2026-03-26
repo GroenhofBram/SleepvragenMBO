@@ -15,10 +15,10 @@ def safe_filename(s):
     s = s.replace(" ", "_")
     s = re.sub(r"[^A-Za-z0-9._-]", "", s)
     return s
-
+    
 # TableImage
 class TableImage:
-    def __init__(
+    def **init**(
         self,
         rows,
         cols,
@@ -61,11 +61,9 @@ class TableImage:
         self.font_size = int(font_size)
         self.cells = {}
         self.bold_cells = {}
-
     def set_text(self, row, col, text, bold=False):
         self.cells[(int(row), int(col))] = "" if text is None else str(text)
         self.bold_cells[(int(row), int(col))] = bool(bold)
-
     def draw(self):
         img = Image.new("RGB", (self.width, self.height), self.bg_color)
         draw = ImageDraw.Draw(img)
@@ -123,14 +121,11 @@ class TableImage:
                 draw.text((x + self.padding_left, current_y), line, fill=(0, 0, 0), font=font)
                 current_y += line_height
         return img
-
     def save(self, filename):
         img = self.draw()
         ext = os.path.splitext(filename)[1].lower()
         fmt = "PNG" if ext == ".png" else "JPEG"
         img.save(filename, fmt)
-
-
 def wrap_text(text, width):
     if text is None or str(text).strip() == "":
         return {"wrapped_text": "", "line_count": 0}
@@ -153,8 +148,6 @@ def wrap_text(text, width):
         wrapped_lines.append(current_line)
         lines_for_curr_text += 1
     return {"wrapped_text": "\n".join(wrapped_lines), "line_count": lines_for_curr_text}
-
-
 # sleepopties
 def create_sleepoptie_single_image(
     text,
@@ -207,23 +200,35 @@ def create_sleepoptie_single_image(
     draw.multiline_text((margin_x, margin_y), wrapped_text, fill="black", font=font, spacing=4)
     filename = f"{tekst_titel}_{tekst_itemnummer}.png"
     return img, filename
-
-
-
 st.set_page_config(page_title="Sleepoptie en Tabel Generator", layout="wide")
+st.markdown(
+    """
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Pacifico&family=Poppins:wght@300;400;600&display=swap');
+    html, body, [data-testid="stAppViewContainer"] {background: linear-gradient(135deg, #fff0f6 0%, #fffaf0 50%, #f0fff4 100%);}
+    .block-container { border-radius:16px; padding:32px; background: rgba(255,255,255,0.75); box-shadow: 0 8px 30px rgba(255,182,193,0.18); }
+    .stButton>button, .stDownloadButton>button, button { background: linear-gradient(90deg,#ffb3d9,#ff80c8); color: #ffffff; border: none; padding: 8px 14px; border-radius: 12px; box-shadow: 0 6px 18px rgba(255,105,180,0.14); font-weight:600; font-family: 'Poppins', sans-serif; }
+    .stButton>button:hover, .stDownloadButton>button:hover, button:hover { transform: translateY(-1px); opacity:0.95; }
+    input[type="text"], textarea, .stTextInput>div>input, .stTextArea>div>textarea { border-radius: 10px; border: 1px solid #ffd6ea; background: linear-gradient(180deg,#fff,#fff7fb); padding:8px; box-shadow: inset 0 2px 8px rgba(255,182,193,0.06); font-family: 'Poppins', sans-serif; }
+    textarea { min-height: 80px; }
+    h1, h2, h3, h4, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 { font-family: 'Pacifico', 'Poppins', sans-serif; color: #ff4d9e; }
+    .stInfo, .stWarning, .stSuccess, .stError { border-radius: 12px; padding: 12px; font-family: 'Poppins', sans-serif; }
+    label, .css-1q8dd3e.egzxvld1 { font-family: 'Poppins', sans-serif; color: #ff4d9e; }
+    .stSelectbox>div, .stMultiSelect>div { border-radius: 10px; }
+    footer { visibility: hidden; }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 st.info("Laatste Update: 2026-03-26")
 st.caption("Links vul je informatie in, rechts zie je de plaatjes.")
-
-
 mode = st.selectbox(
     "Tabel maken of Sleepopties maken?",
     ["Tabel Maken", "Sleepopties Maken"],
     index=0,
 )
-
 # Two-column layout: left for inputs, right for preview/downloads
 left, right = st.columns([1, 1.2])
-
 # ---------- Tables mode ----------
 if mode == "Tabel Maken":
     with left:
@@ -325,10 +330,9 @@ if mode == "Tabel Maken":
                     )
                 )
                 row1_height = int(heading_lines * 18)
-                row2_height = int(longest_rows * 18 * answers_per_box)
+                row2_height = int(longest_rows _18_ answers_per_box)
                 row_heights = [row1_height, row2_height]
                 st.write(f"De rij waar de antwoorden in gesleept moeten worden wordt {row2_height} pixels ( {longest_rows} × 18 × {answers_per_box} )")
-
         # Create TableImage instance
         table = TableImage(
             rows=rows,
@@ -344,7 +348,6 @@ if mode == "Tabel Maken":
             bold_choice = st.checkbox("Vink dit aan als de tekst dikgedrukt moet zijn", key="table_bold_all")
         else:
             bold_choice = False
-
         # Arrange cell inputs in a grid using columns to reduce scrolling
         for r in range(rows):
             cols_inputs = st.columns(cols)
@@ -357,7 +360,6 @@ if mode == "Tabel Maken":
                     else:
                         bold_cell = bold_choice
                 table.set_text(r, c, text, bold=bold_cell)
-
     with right:
         st.subheader("Preview & Downloaden")
         preview_placeholder = st.empty()
@@ -379,14 +381,11 @@ if mode == "Tabel Maken":
             )
         except Exception as e:
             st.error(f"Kon tabel niet genereren: {e}")
-
 # ---------- Sleepopties mode ----------
 elif mode == "Sleepopties Maken":
     with left:
-
         vakcode = st.text_input("Vakcode (optioneel)", value="", key="sleep_vakcode")
         st.header("Sleepopties genereren")
-
         with st.container():
             tekst_titel = st.text_input("Titel van de tekst", value="title", key="sleep_titel")
             tekst_itemnummer = st.text_input("Item nummer", value="1", key="sleep_itemnr")
@@ -399,7 +398,6 @@ elif mode == "Sleepopties Maken":
                 help="Dit is nodig om de grootte van de plaatjes goed te krijgen.",
             )
             max_chars_per_line_sleep = st.number_input("Kies het aantal karakters per regel", min_value=10, value=33, key="sleep_wrap")
-
         st.subheader("Sleepopties")
         st.write("Laat sleepopties die je niet nodig hebt leeg.")
         # Display the 8 text areas in two columns to save vertical space
@@ -411,7 +409,6 @@ elif mode == "Sleepopties Maken":
             col_idx = 0 if idx < 4 else 1
             with opt_cols[col_idx]:
                 options[idx] = st.text_area(f"Sleepoptie {L}", value="", height=80, key=f"opt_{L}")
-
     with right:
         st.subheader("Gegenereerde plaatjes")
         base_dir = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
@@ -450,8 +447,6 @@ elif mode == "Sleepopties Maken":
                 if img is not None:
                     filename = prefix + f"{safe_filename(tekst_titel)}_{tekst_itemnummer}_{letter}.png"
                     generated_images.append((filename, img))
-
-            
             if generated_images:
                 st.success(f"Gegenereerde {len(generated_images)} plaatjes:")
                 for i, (filename, img) in enumerate(generated_images, start=1):
