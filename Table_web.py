@@ -6,6 +6,20 @@ import os
 import math
 import zipfile
 import re
+
+# Ensure future runs use Streamlit dark theme by creating (or overwriting) .streamlit/config.toml
+# Note: Writing this file affects future launches; to force dark in the current session we also inject CSS/JS below.
+try:
+    cfg_dir = os.path.join(os.getcwd(), ".streamlit")
+    os.makedirs(cfg_dir, exist_ok=True)
+    cfg_path = os.path.join(cfg_dir, "config.toml")
+    cfg_content = '[theme]\nbase = "dark"\n'
+    with open(cfg_path, "w", encoding="utf-8") as f:
+        f.write(cfg_content)
+except Exception:
+    # If we can't write the file (read-only FS etc.) just continue — CSS/JS injection will still force dark.
+    pass
+
 # helper to create safe filenames
 def safe_filename(s):
     if s is None:
@@ -14,6 +28,7 @@ def safe_filename(s):
     s = s.replace(" ", "_")
     s = re.sub(r"[^A-Za-z0-9._-]", "", s)
     return s
+
 # TableImage
 class TableImage:
     def __init__(
@@ -59,9 +74,11 @@ class TableImage:
         self.font_size = int(font_size)
         self.cells = {}
         self.bold_cells = {}
+
     def set_text(self, row, col, text, bold=False):
         self.cells[(int(row), int(col))] = "" if text is None else str(text)
         self.bold_cells[(int(row), int(col))] = bool(bold)
+
     def draw(self):
         img = Image.new("RGB", (self.width, self.height), self.bg_color)
         draw = ImageDraw.Draw(img)
@@ -119,11 +136,13 @@ class TableImage:
                 draw.text((x + self.padding_left, current_y), line, fill=(0, 0, 0), font=font)
                 current_y += line_height
         return img
+
     def save(self, filename):
         img = self.draw()
         ext = os.path.splitext(filename)[1].lower()
         fmt = "PNG" if ext == ".png" else "JPEG"
         img.save(filename, fmt)
+
 def wrap_text(text, width):
     if text is None or str(text).strip() == "":
         return {"wrapped_text": "", "line_count": 0}
@@ -199,7 +218,61 @@ def create_sleepoptie_single_image(
     draw.multiline_text((margin_x, margin_y), wrapped_text, fill="black", font=font, spacing=4)
     filename = f"{tekst_titel}_{tekst_itemnummer}.png"
     return img, filename
+
+
 st.set_page_config(page_title="Sleepoptie en Tabel Generator", layout="wide")
+
+
+css_force_dark = """
+<script>
+  // Force the data-theme attribute to dark for components that look at it
+  try { document.documentElement.setAttribute('data-theme', 'dark'); } catch(e){}
+</script>
+<style>
+  /* Page background & main text */
+  html, body, [data-testid="stAppViewContainer"], .stApp, .reportview-container {
+    background: #0b0b0b !important;
+    color: #eaeaea !important;
+  }
+  /* Main content container */
+  .block-container, .css-1outpf7, .css-1kyxreq {
+    background: rgba(0,0,0,0.85) !important;
+    color: #ffffff !important;
+  }
+  /* Headings and labels */
+  h1, h2, h3, h4, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3, label {
+    color: #ff7ab6 !important;
+  }
+  /* Inputs / textareas / selectboxes / widgets */
+  input, textarea, select, .stTextInput>div>input, .stTextArea>div>textarea,
+  .stSelectbox>div, .stMultiSelect>div, .stRadio, .stSlider, .stCheckbox {
+    background: rgba(255,255,255,0.03) !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255,122,182,0.12) !important;
+  }
+  /* Buttons */
+  .stButton>button, .stDownloadButton>button, button {
+    background: linear-gradient(90deg,#ff5fa6,#ff80c8) !important;
+    color: #ffffff !important;
+    border: none !important;
+  }
+  /* Tables / dataframes */
+  table, thead, tbody, tr, td, th {
+    background: transparent !important;
+    color: #eaeaea !important;
+    border-color: rgba(255,255,255,0.06) !important;
+  }
+  /* Overrule inline theming via data-theme attributes */
+  html[data-theme="light"], [data-theme="light"] * {
+    background: none !important;
+    color: inherit !important;
+  }
+  /* Ensure scrollbar looks dark */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 10px; }
+</style>
+"""
+st.markdown(css_force_dark, unsafe_allow_html=True)
 
 st.markdown(
     """
@@ -209,7 +282,6 @@ st.markdown(
         background: #000000 !important;
         color: #ffffff;
       }
-
       /* Main content container */
       .block-container {
         border-radius: 16px;
@@ -218,7 +290,6 @@ st.markdown(
         box-shadow: 0 8px 30px rgba(0,0,0,0.6);
         color: #ffffff;
       }
-
       /* Headings and labels */
       h1, h2, h3, h4, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 {
         color: #ff7ab6;
@@ -228,7 +299,6 @@ st.markdown(
         color: #ff7ab6;
         font-family: 'Poppins', sans-serif;
       }
-
       /* Inputs / textareas */
       input[type="text"], textarea, .stTextInput>div>input, .stTextArea>div>textarea {
         border-radius: 10px;
@@ -240,7 +310,6 @@ st.markdown(
         font-family: 'Poppins', sans-serif;
       }
       textarea { min-height: 80px; color: #fff; }
-
       /* Buttons / download buttons */
       .stButton>button, .stDownloadButton>button, button {
         background: linear-gradient(90deg,#ff5fa6,#ff80c8);
@@ -256,7 +325,6 @@ st.markdown(
         transform: translateY(-1px);
         opacity:0.95;
       }
-
       /* Alerts */
       .stInfo, .stWarning, .stSuccess, .stError {
         border-radius: 12px;
@@ -265,12 +333,10 @@ st.markdown(
         color: #fff;
         background: rgba(255,255,255,0.03);
       }
-
       /* Small tweaks for contrast on widgets */
       .stSelectbox>div, .stMultiSelect>div { border-radius: 10px; }
       .stSlider, .stRadio, .stCheckbox { color: #fff; }
       .stMarkdown { color: #fff; }
-
       /* Hide default footer */
       footer { visibility: hidden; }
     </style>
