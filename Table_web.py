@@ -146,6 +146,7 @@ def wrap_text(text, width):
         wrapped_lines.append(current_line)
         lines_for_curr_text += 1
     return {"wrapped_text": "\n".join(wrapped_lines), "line_count": lines_for_curr_text}
+
 # sleepopties
 def create_sleepoptie_single_image(
     text,
@@ -387,7 +388,7 @@ if mode == "Tabel Maken":
                     )
                 )
                 row1_height = int(heading_lines * 18)
-                row2_height = int(longest_rows * 18 * answers_per_box)
+                row2_height = int(longest_rows * 20 * answers_per_box)
                 row_heights = [row1_height, row2_height]
                 st.write(f"De rij waar de antwoorden in gesleept moeten worden wordt {row2_height} pixels ( {longest_rows} × 18 × {answers_per_box} )")
         # Create TableImage instance
