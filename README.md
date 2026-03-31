@@ -1,3 +1,2 @@
 # TODO
-- Testen
-- UI verNederlandsen en schoonmaken
+- Facet 14 - bredere tabel?
