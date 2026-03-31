@@ -531,7 +531,7 @@ elif mode == "Sleepopties Maken":
         opt_cols = st.columns(2)
         for idx, L in enumerate(letters):
             col_idx = 0 if idx < 4 else 1
-            with opt_cols[col_idx]:
+            with opt_cols[idx % 2]:
                 options[idx] = st.text_area(f"Sleepoptie {L}", value="", height=80, key=f"opt_{L}")
     with right:
         st.subheader("Gegenereerde plaatjes")
