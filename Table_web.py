@@ -341,7 +341,7 @@ if mode == "Tabel Maken":
                     )
                 )
                 answer_row_height = int(longest_rows * 20)
-                st.write(f"De rijen waar de antwoorden in gesleept moeten worden worden {answer_row_height} pixels ( {longest_rows} × 18 )")
+                st.write(f"De rijen waar de antwoorden in gesleept moeten worden worden {answer_row_height} pixels ( {longest_rows} × 20 )")
                 if heading_lines > 0:
                     first_row_height = heading_lines * 18
                     if rows == 1:
@@ -388,9 +388,9 @@ if mode == "Tabel Maken":
                     )
                 )
                 row1_height = int(heading_lines * 18)
-                row2_height = int(longest_rows * 18 * answers_per_box)
+                row2_height = int(longest_rows * 20 * answers_per_box)
                 row_heights = [row1_height, row2_height]
-                st.write(f"De rij waar de antwoorden in gesleept moeten worden wordt {row2_height} pixels ( {longest_rows} × 18 × {answers_per_box} )")
+                st.write(f"De rij waar de antwoorden in gesleept moeten worden wordt {row2_height} pixels ( {longest_rows} × 20 × {answers_per_box} )")
         # Create TableImage instance
         table = TableImage(
             rows=rows,
