@@ -340,7 +340,6 @@ left, right = st.columns([1, 1.2])
 # ---------- Tables mode ----------
 if mode == "Tabel Maken":
     with left:
-        # Voeg hier Vakcode toe
         vakcode = st.text_input("Vak", value="", key="table_vakcode")
         tekst_titel = st.text_input("Titel van de tekst", value="title", key="table_titel")
         tekst_itemnummer = st.text_input("Item nummer", value="1", key="table_itemnr")
@@ -368,7 +367,7 @@ if mode == "Tabel Maken":
                 col_width = int(450 // cols)
                 st.write(f"Met deze instellingen wordt de kolombreedte {col_width} pixels (450 // {cols})")
                 heading_lines = 0
-                if cols >= 3:
+                if cols >= 0:
                     has_label = st.checkbox(
                         "Heeft de kop van de tabel een label?",
                         value=False,
