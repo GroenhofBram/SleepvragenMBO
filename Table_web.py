@@ -7,8 +7,7 @@ import math
 import zipfile
 import re
 
-# Ensure future runs use Streamlit dark theme by creating (or overwriting) .streamlit/config.toml
-# Note: Writing this file affects future launches; to force dark in the current session we also inject CSS/JS below.
+
 try:
     cfg_dir = os.path.join(os.getcwd(), ".streamlit")
     os.makedirs(cfg_dir, exist_ok=True)
@@ -344,7 +343,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.info("Laatste Update: 2026-03-31")
+st.info("Laatste Update: 2026-04-16")
 st.caption("Links vul je informatie in, rechts zie je de plaatjes.")
 mode = st.selectbox(
     "Tabel maken of Sleepopties maken?",
