@@ -366,16 +366,7 @@ if mode == "Tabel Maken":
                 )
                 col_width = int(450 // cols)
                 st.write(f"Met deze instellingen wordt de kolombreedte {col_width} pixels (450 // {cols})")
-                heading_lines = 0
-                if cols >= 0:
-                    has_label = st.checkbox(
-                        "Heeft de kop van de tabel een label?",
-                        value=False,
-                        key="heading_has_label_type1",
-                        help="Als de kop van de tabel een label heeft, kun je instellen hoeveel regels dat label nodig heeft.",
-                    )
-                    if has_label:
-                        heading_lines = int(
+                heading_lines = int(
                             st.number_input(
                                 "Hoeveel regels zijn nodig voor de kop van de tabel?",
                                 min_value=1,
