@@ -6,7 +6,9 @@ import os
 import math
 import zipfile
 import re
+
 # Ensure future runs use Streamlit dark theme by creating (or overwriting) .streamlit/config.toml
+# Note: Writing this file affects future launches; to force dark in the current session we also inject CSS/JS below.
 try:
     cfg_dir = os.path.join(os.getcwd(), ".streamlit")
     os.makedirs(cfg_dir, exist_ok=True)
@@ -15,7 +17,9 @@ try:
     with open(cfg_path, "w", encoding="utf-8") as f:
         f.write(cfg_content)
 except Exception:
+    # If we can't write the file (read-only FS etc.) just continue — CSS/JS injection will still force dark.
     pass
+
 # helper to create safe filenames
 def safe_filename(s):
     if s is None:
@@ -24,6 +28,7 @@ def safe_filename(s):
     s = s.replace(" ", "_")
     s = re.sub(r"[^A-Za-z0-9._-]", "", s)
     return s
+
 # TableImage
 class TableImage:
     def __init__(
@@ -69,9 +74,11 @@ class TableImage:
         self.font_size = int(font_size)
         self.cells = {}
         self.bold_cells = {}
+
     def set_text(self, row, col, text, bold=False):
         self.cells[(int(row), int(col))] = "" if text is None else str(text)
         self.bold_cells[(int(row), int(col))] = bool(bold)
+
     def draw(self):
         img = Image.new("RGB", (self.width, self.height), self.bg_color)
         draw = ImageDraw.Draw(img)
@@ -129,11 +136,13 @@ class TableImage:
                 draw.text((x + self.padding_left, current_y), line, fill=(0, 0, 0), font=font)
                 current_y += line_height
         return img
+
     def save(self, filename):
         img = self.draw()
         ext = os.path.splitext(filename)[1].lower()
         fmt = "PNG" if ext == ".png" else "JPEG"
         img.save(filename, fmt)
+
 def wrap_text(text, width):
     if text is None or str(text).strip() == "":
         return {"wrapped_text": "", "line_count": 0}
@@ -156,6 +165,7 @@ def wrap_text(text, width):
         wrapped_lines.append(current_line)
         lines_for_curr_text += 1
     return {"wrapped_text": "\n".join(wrapped_lines), "line_count": lines_for_curr_text}
+
 # sleepopties
 def create_sleepoptie_single_image(
     text,
@@ -208,7 +218,11 @@ def create_sleepoptie_single_image(
     draw.multiline_text((margin_x, margin_y), wrapped_text, fill="black", font=font, spacing=4)
     filename = f"{tekst_titel}_{tekst_itemnummer}.png"
     return img, filename
+
+
 st.set_page_config(page_title="Sleepoptie en Tabel Generator", layout="wide")
+
+
 css_force_dark = """
 <script>
   // Force the data-theme attribute to dark for components that look at it
@@ -259,6 +273,7 @@ css_force_dark = """
 </style>
 """
 st.markdown(css_force_dark, unsafe_allow_html=True)
+
 st.markdown(
     """
     <style>
@@ -328,6 +343,7 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
 st.info("Laatste Update: 2026-03-31")
 st.caption("Links vul je informatie in, rechts zie je de plaatjes.")
 mode = st.selectbox(
@@ -367,16 +383,8 @@ if mode == "Tabel Maken":
                 )
                 col_width = int(450 // cols)
                 st.write(f"Met deze instellingen wordt de kolombreedte {col_width} pixels (450 // {cols})")
-
-                # Nieuwe vraag: heeft de kop een label?
-                has_label = st.checkbox(
-                    "Heeft de kop van de tabel een label?",
-                    value=(cols >= 3),
-                    key="t1_has_label",
-                )
-
-                # Alleen als er een label is: vraag hoeveel regels de kop nodig heeft
-                if has_label:
+                heading_lines = 0
+                if cols >= 3:
                     heading_lines = int(
                         st.number_input(
                             "Hoeveel regels zijn nodig voor de kop van de tabel?",
@@ -384,15 +392,10 @@ if mode == "Tabel Maken":
                             value=1,
                             step=1,
                             key="heading_lines_type1",
-                            help="Aantal regels voor de kop van de tabel. Bij meer kolommen is er minder breedte per kolom, dus je kunt hier meer regels nodig hebben.",
+                            help="Deze optie is alleen relevant bij 3 of meer kolommen. Omdat er meer kolommen zijn, is er minder ruimte voor de tekst. Daarom kan het zijn dat je meerdere regels nodig hebt. Kijk even goed wat er gebeurt als je hier wat aanpast en wat er gebeurt als je de waarde van 'Kies het aantal karakters per regel' aanpast",
                         )
                     )
                     st.write(f"De eerste rij van de tabel (de kop van de tabel) wordt {heading_lines * 18} pixels ( {heading_lines} × 18 )")
-                else:
-                    heading_lines = 0
-
-                if cols < 3:
-                    st.caption("Tip: bij minder dan 3 kolommen is de kop meestal 1 regel, maar pas dit aan indien gewenst.")
                 longest_rows = int(
                     st.number_input(
                         "Hoeveel regels zijn nodig voor het langste antwoord?",
@@ -451,7 +454,7 @@ if mode == "Tabel Maken":
                     )
                 )
                 row1_height = int(heading_lines * 18)
-                row2_height = int(longest_rows _20_ answers_per_box)
+                row2_height = int(longest_rows * 20 * answers_per_box)
                 row_heights = [row1_height, row2_height]
                 st.write(f"De rij waar de antwoorden in gesleept moeten worden wordt {row2_height} pixels ( {longest_rows} × 20 × {answers_per_box} )")
         # Create TableImage instance
@@ -484,6 +487,7 @@ if mode == "Tabel Maken":
     with right:
         st.subheader("Preview & Downloaden")
         preview_placeholder = st.empty()
+        # Generate preview automatically (no button). Streamlit reruns when any input changes.
         try:
             img = table.draw()
             prefix = (safe_filename(vakcode) + "_") if (vakcode and str(vakcode).strip()) else ""
@@ -526,6 +530,7 @@ elif mode == "Sleepopties Maken":
         # two-column layout for options
         opt_cols = st.columns(2)
         for idx, L in enumerate(letters):
+            col_idx = 0 if idx < 4 else 1
             with opt_cols[idx % 2]:
                 options[idx] = st.text_area(f"Sleepoptie {L}", value="", height=80, key=f"opt_{L}")
     with right:
