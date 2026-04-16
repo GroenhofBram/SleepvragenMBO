@@ -384,17 +384,16 @@ if mode == "Tabel Maken":
                 col_width = int(450 // cols)
                 st.write(f"Met deze instellingen wordt de kolombreedte {col_width} pixels (450 // {cols})")
                 heading_lines = 0
-                if cols >= 3:
-                    heading_lines = int(
-                        st.number_input(
-                            "Hoeveel regels zijn nodig voor de kop van de tabel?",
-                            min_value=1,
-                            value=1,
-                            step=1,
-                            key="heading_lines_type1",
-                            help="Deze optie is alleen relevant bij 3 of meer kolommen. Omdat er meer kolommen zijn, is er minder ruimte voor de tekst. Daarom kan het zijn dat je meerdere regels nodig hebt. Kijk even goed wat er gebeurt als je hier wat aanpast en wat er gebeurt als je de waarde van 'Kies het aantal karakters per regel' aanpast",
-                        )
+                heading_lines = int(
+                    st.number_input(
+                        "Hoeveel regels zijn nodig voor de kop van de tabel?",
+                        min_value=1,
+                        value=1,
+                        step=1,
+                        key="heading_lines_type1",
+                        help="Aantal regels voor de kop van de tabel. Bij veel kolommen is er minder breedte per kolom, dus je hebt soms meerdere regels nodig.",
                     )
+                )
                     st.write(f"De eerste rij van de tabel (de kop van de tabel) wordt {heading_lines * 18} pixels ( {heading_lines} × 18 )")
                 longest_rows = int(
                     st.number_input(
