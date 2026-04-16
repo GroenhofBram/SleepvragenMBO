@@ -16,7 +16,6 @@ try:
     with open(cfg_path, "w", encoding="utf-8") as f:
         f.write(cfg_content)
 except Exception:
-    # If we can't write the file (read-only FS etc.) just continue — CSS/JS injection will still force dark.
     pass
 
 # helper to create safe filenames
@@ -382,7 +381,6 @@ if mode == "Tabel Maken":
                 )
                 col_width = int(450 // cols)
                 st.write(f"Met deze instellingen wordt de kolombreedte {col_width} pixels (450 // {cols})")
-                # Vervangen: in plaats van afhankelijk van cols >= 3,  eerstvrage of de kop een label heeft.
                 heading_lines = 0
                 has_heading_label = st.checkbox(
                     "Heeft de kop van de tabel een label?",
