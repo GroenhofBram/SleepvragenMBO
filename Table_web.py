@@ -16,6 +16,7 @@ try:
     with open(cfg_path, "w", encoding="utf-8") as f:
         f.write(cfg_content)
 except Exception:
+    # If we can't write the file (read-only FS etc.) just continue — CSS/JS injection will still force dark.
     pass
 
 # helper to create safe filenames
@@ -217,7 +218,9 @@ def create_sleepoptie_single_image(
     filename = f"{tekst_titel}_{tekst_itemnummer}.png"
     return img, filename
 
+
 st.set_page_config(page_title="Sleepoptie en Tabel Generator", layout="wide")
+
 
 css_force_dark = """
 <script>
@@ -342,16 +345,13 @@ st.markdown(
 
 st.info("Laatste Update: 2026-03-31")
 st.caption("Links vul je informatie in, rechts zie je de plaatjes.")
-
 mode = st.selectbox(
     "Tabel maken of Sleepopties maken?",
     ["Tabel Maken", "Sleepopties Maken"],
     index=0,
 )
-
 # Two-column layout: left for inputs, right for preview/downloads
 left, right = st.columns([1, 1.2])
-
 # ---------- Tables mode ----------
 if mode == "Tabel Maken":
     with left:
@@ -372,7 +372,6 @@ if mode == "Tabel Maken":
             help="Na hoeveel karakters moet er een enter komen? Verlaag de waarde als je in het plaatje ziet dat er eerder een enter moet komen.",
             key="table_wrap_width",
         )
-
         with st.expander("Instellingen voor de afmetingen van de tabel", expanded=True):
             if table_type.startswith("Type 1"):
                 rows = int(
@@ -383,22 +382,19 @@ if mode == "Tabel Maken":
                 )
                 col_width = int(450 // cols)
                 st.write(f"Met deze instellingen wordt de kolombreedte {col_width} pixels (450 // {cols})")
-
-                
-                heading_lines = int(
-                    st.number_input(
-                        "Hoeveel regels zijn nodig voor de kop van de tabel?",
-                        min_value=1,
-                        value=1,
-                        step=1,
-                        key="heading_lines_type1",
-                        help="Aantal regels voor de kop van de tabel. Bij meer kolommen is er minder breedte per kolom, dus je kunt hier meer regels nodig hebben.",
+                heading_lines = 0
+                if cols >= 3:
+                    heading_lines = int(
+                        st.number_input(
+                            "Hoeveel regels zijn nodig voor de kop van de tabel?",
+                            min_value=1,
+                            value=1,
+                            step=1,
+                            key="heading_lines_type1",
+                            help="Deze optie is alleen relevant bij 3 of meer kolommen. Omdat er meer kolommen zijn, is er minder ruimte voor de tekst. Daarom kan het zijn dat je meerdere regels nodig hebt. Kijk even goed wat er gebeurt als je hier wat aanpast en wat er gebeurt als je de waarde van 'Kies het aantal karakters per regel' aanpast",
+                        )
                     )
-                )
-                if cols < 3:
-                    st.caption("Tip: bij minder dan 3 kolommen is de kop meestal 1 regel, maar pas dit aan indien gewenst.")
-                st.write(f"De eerste rij van de tabel (de kop van de tabel) wordt {heading_lines * 18} pixels ( {heading_lines} × 18 )")
-
+                    st.write(f"De eerste rij van de tabel (de kop van de tabel) wordt {heading_lines * 18} pixels ( {heading_lines} × 18 )")
                 longest_rows = int(
                     st.number_input(
                         "Hoeveel regels zijn nodig voor het langste antwoord?",
@@ -411,7 +407,6 @@ if mode == "Tabel Maken":
                 )
                 answer_row_height = int(longest_rows * 20)
                 st.write(f"De rijen waar de antwoorden in gesleept moeten worden worden {answer_row_height} pixels ( {longest_rows} × 20 )")
-
                 if heading_lines > 0:
                     first_row_height = heading_lines * 18
                     if rows == 1:
@@ -420,14 +415,12 @@ if mode == "Tabel Maken":
                         row_heights = [first_row_height] + [answer_row_height] * (rows - 1)
                 else:
                     row_heights = [answer_row_height] * rows
-
             else:
                 # Type 2 defaults
                 rows = 2
                 cols = 2
                 col_width = 225
                 st.write(f"De kolombreedte voor Type 2 is altijd hetzelfde: {col_width} pixels")
-
                 heading_lines = int(
                     st.number_input(
                         "Hoeveel regels zijn nodig voor de kop van de tabel?",
@@ -439,7 +432,6 @@ if mode == "Tabel Maken":
                     )
                 )
                 st.write(f"De eerste rij van de tabel (de kop van de tabel) wordt {heading_lines * 18} pixels ( {heading_lines} × 18 )")
-
                 longest_rows = int(
                     st.number_input(
                         "Hoeveel regels zijn nodig voor het langste antwoord?",
@@ -464,7 +456,6 @@ if mode == "Tabel Maken":
                 row2_height = int(longest_rows * 20 * answers_per_box)
                 row_heights = [row1_height, row2_height]
                 st.write(f"De rij waar de antwoorden in gesleept moeten worden wordt {row2_height} pixels ( {longest_rows} × 20 × {answers_per_box} )")
-
         # Create TableImage instance
         table = TableImage(
             rows=rows,
@@ -475,13 +466,11 @@ if mode == "Tabel Maken":
             line_width=1,
             wrap_width=max_chars_per_line,
         )
-
         st.subheader("Vul de benodigde tekst per cel van de tabel in, de cellen staan op dezelfde volgorde als de tabel (cel 1.1 is linksboven etc.).")
         if table_type.startswith("Type 2"):
             bold_choice = st.checkbox("Vink dit aan als de tekst dikgedrukt moet zijn", key="table_bold_all")
         else:
             bold_choice = False
-
         # Arrange cell inputs in a grid using columns to reduce scrolling
         for r in range(rows):
             cols_inputs = st.columns(cols)
@@ -494,11 +483,10 @@ if mode == "Tabel Maken":
                     else:
                         bold_cell = bold_choice
                 table.set_text(r, c, text, bold=bold_cell)
-
     with right:
         st.subheader("Preview & Downloaden")
         preview_placeholder = st.empty()
-        
+        # Generate preview automatically (no button). Streamlit reruns when any input changes.
         try:
             img = table.draw()
             prefix = (safe_filename(vakcode) + "_") if (vakcode and str(vakcode).strip()) else ""
@@ -516,7 +504,6 @@ if mode == "Tabel Maken":
             )
         except Exception as e:
             st.error(f"Kon tabel niet genereren: {e}")
-
 # ---------- Sleepopties mode ----------
 elif mode == "Sleepopties Maken":
     with left:
@@ -542,9 +529,9 @@ elif mode == "Sleepopties Maken":
         # two-column layout for options
         opt_cols = st.columns(2)
         for idx, L in enumerate(letters):
+            col_idx = 0 if idx < 4 else 1
             with opt_cols[idx % 2]:
                 options[idx] = st.text_area(f"Sleepoptie {L}", value="", height=80, key=f"opt_{L}")
-
     with right:
         st.subheader("Gegenereerde plaatjes")
         base_dir = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
@@ -570,7 +557,7 @@ elif mode == "Sleepopties Maken":
                 if not text or text.strip() == "":
                     continue
                 letter = chr(64 + idx)
-                img, _ = create_sleepoptie_single_image(
+                img, _= create_sleepoptie_single_image(
                     text,
                     tekst_titel=tekst_titel,
                     tekst_itemnummer=f"{tekst_itemnummer}_{letter}",
