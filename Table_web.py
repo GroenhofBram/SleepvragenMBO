@@ -383,8 +383,14 @@ if mode == "Tabel Maken":
                 )
                 col_width = int(450 // cols)
                 st.write(f"Met deze instellingen wordt de kolombreedte {col_width} pixels (450 // {cols})")
+                # Vervangen: in plaats van afhankelijk van cols >= 3,  eerstvrage of de kop een label heeft.
                 heading_lines = 0
-                if cols >= 3:
+                has_heading_label = st.checkbox(
+                    "Heeft de kop van de tabel een label?",
+                    value=False,
+                    key="t1_heading_has_label",
+                )
+                if has_heading_label:
                     heading_lines = int(
                         st.number_input(
                             "Hoeveel regels zijn nodig voor de kop van de tabel?",
@@ -392,7 +398,7 @@ if mode == "Tabel Maken":
                             value=1,
                             step=1,
                             key="heading_lines_type1",
-                            help="Deze optie is alleen relevant bij 3 of meer kolommen. Omdat er meer kolommen zijn, is er minder ruimte voor de tekst. Daarom kan het zijn dat je meerdere regels nodig hebt. Kijk even goed wat er gebeurt als je hier wat aanpast en wat er gebeurt als je de waarde van 'Kies het aantal karakters per regel' aanpast",
+                            help="Deze optie is relevant als de kop een label heeft. Omdat er meer kolommen kunnen zijn, is er minder ruimte voor de tekst. Daarom kan het zijn dat je meerdere regels nodig hebt. Kijk even goed wat er gebeurt als je hier wat aanpast en wat er gebeurt als je de waarde van 'Kies het aantal karakters per regel' aanpast",
                         )
                     )
                     st.write(f"De eerste rij van de tabel (de kop van de tabel) wordt {heading_lines * 18} pixels ( {heading_lines} × 18 )")
