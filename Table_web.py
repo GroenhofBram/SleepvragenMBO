@@ -384,7 +384,7 @@ if mode == "Tabel Maken":
                 col_width = int(450 // cols)
                 st.write(f"Met deze instellingen wordt de kolombreedte {col_width} pixels (450 // {cols})")
                 heading_lines = 0
-                if cols >= 0:
+                if cols >= 3:
                     heading_lines = int(
                         st.number_input(
                             "Hoeveel regels zijn nodig voor de kop van de tabel?",
