@@ -7,7 +7,6 @@ import math
 import zipfile
 import re
 # Ensure future runs use Streamlit dark theme by creating (or overwriting) .streamlit/config.toml
-# Note: Writing this file affects future launches; to force dark in the current session we also inject CSS/JS below.
 try:
     cfg_dir = os.path.join(os.getcwd(), ".streamlit")
     os.makedirs(cfg_dir, exist_ok=True)
@@ -16,7 +15,6 @@ try:
     with open(cfg_path, "w", encoding="utf-8") as f:
         f.write(cfg_content)
 except Exception:
-    # If we can't write the file (read-only FS etc.) just continue — CSS/JS injection will still force dark.
     pass
 # helper to create safe filenames
 def safe_filename(s):
