@@ -358,7 +358,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.info("Laatste Update: 2026-04-16")
+st.info("Laatste Update: 2026-04-17")
 st.caption("Links vul je informatie in, rechts zie je de plaatjes.")
 mode = st.selectbox(
     "Tabel maken of Sleepopties maken?",
