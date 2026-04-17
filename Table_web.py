@@ -355,7 +355,7 @@ left, right = st.columns([1, 1.2])
 if mode == "Tabel Maken":
     with left:
         # Voeg hier Vakcode toe
-        vakcode = st.text_input("Vak", value="", key="table_vakcode")
+        vakcode = st.text_input("Vakcode (optioneel)", value="", key="table_vakcode")
         tekst_titel = st.text_input("Titel van de tekst", value="title", key="table_titel")
         tekst_itemnummer = st.text_input("Item nummer", value="1", key="table_itemnr")
         table_type = st.selectbox(
