@@ -221,21 +221,7 @@ def create_sleepoptie_single_image(
 st.set_page_config(page_title="Sleepoptie en Tabel Generator", layout="wide")
 manual_filename = "Nieuwe Itemtypes Handleiding Invoer TOM.docx"
 base_dir = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
-manual_path = os.path.join(base_dir, manual_filename)
-try:
-    with open(manual_path, "rb") as f:
-        manual_bytes = f.read()
-    st.download_button(
-        label="Klik hier om de handleiding voor invoer te downloaden!",
-        data=manual_bytes,
-        file_name=manual_filename,
-        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        key="download_manual",
-    )
-except FileNotFoundError:
-    st.warning(f"Handleiding niet gevonden: {manual_filename}. Zet het bestand in de app-map ({base_dir}).")
-except Exception as e:
-    st.error(f"Kon handleiding niet laden: {e}")
+
 
 css_force_dark = """
 <script>
@@ -358,7 +344,25 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.info("Laatste Update: 2026-04-17")
+st.info("Laatste Update: 2026-04-17 - Download knop met handleiding")
+
+manual_path = os.path.join(base_dir, manual_filename)
+try:
+    with open(manual_path, "rb") as f:
+        manual_bytes = f.read()
+    st.download_button(
+        label="Klik hier om de handleiding voor invoer te downloaden!",
+        data=manual_bytes,
+        file_name=manual_filename,
+        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        key="download_manual",
+    )
+except FileNotFoundError:
+    st.warning(f"Handleiding niet gevonden: {manual_filename}. Zet het bestand in de app-map ({base_dir}).")
+except Exception as e:
+    st.error(f"Kon handleiding niet laden: {e}")
+
+
 st.caption("Links vul je informatie in, rechts zie je de plaatjes.")
 mode = st.selectbox(
     "Tabel maken of Sleepopties maken?",
