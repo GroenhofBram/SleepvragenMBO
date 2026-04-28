@@ -377,7 +377,7 @@ if mode == "Tabel Maken":
         # Voeg hier Vakcode toe
         vakcode = st.text_input("Vakcode (optioneel)", value="", key="table_vakcode")
         tekst_titel = st.text_input("Titel van de tekst", value="title", key="table_titel")
-        tekst_itemnummer = st.text_input("Item nummer", value="1", key="table_itemnr")
+        tekst_itemnummer = st.text_input("Item nummer (in selectie)", value="1", key="table_itemnr")
         table_type = st.selectbox(
             "Selecteer het Type sleepvraag",
             ("Type 1 (graphic gapmatch)", "Type 2 (graphic gapmatch categorize)"),
@@ -535,7 +535,7 @@ elif mode == "Sleepopties Maken":
         st.header("Sleepopties genereren")
         with st.container():
             tekst_titel = st.text_input("Titel van de tekst", value="title", key="sleep_titel")
-            tekst_itemnummer = st.text_input("Item nummer", value="1", key="sleep_itemnr")
+            tekst_itemnummer = st.text_input("Item nummer (in selectie)", value="1", key="sleep_itemnr")
             num_columns = st.number_input(
                 "Hoeveel kolommen heeft de tabel?",
                 min_value=1,
@@ -545,7 +545,7 @@ elif mode == "Sleepopties Maken":
                 help="Dit is nodig om de grootte van de plaatjes goed te krijgen.",
             )
             max_chars_per_line_sleep = st.number_input("Kies het aantal karakters per regel", min_value=10, value=33, key="sleep_wrap")
-        st.subheader("Sleepopties")
+        st.subheader("Sleepopties (antwoordopties)")
         st.write("Laat sleepopties die je niet nodig hebt leeg.")
         # Display the 8 text areas in two columns to save vertical space
         letters = ["A", "B", "C", "D", "E", "F", "G", "H"]
