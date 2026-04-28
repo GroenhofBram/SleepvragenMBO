@@ -344,7 +344,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.info("Laatste Update: 2026-04-17 - Download knop met handleiding")
+st.info("Laatste Update: 2026-04-28 - Download knop met handleiding")
 
 manual_path = os.path.join(base_dir, manual_filename)
 try:
