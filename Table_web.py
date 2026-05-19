@@ -7,7 +7,6 @@ import math
 import zipfile
 import re
 
-
 try:
     cfg_dir = os.path.join(os.getcwd(), ".streamlit")
     os.makedirs(cfg_dir, exist_ok=True)
@@ -180,7 +179,11 @@ def create_sleepoptie_single_image(
     wrap_result = wrap_text(text.strip(), max_chars_per_line)
     wrapped_text = wrap_result["wrapped_text"]
     line_count = wrap_result["line_count"]
-    calculated_height = max(10, (line_count * 15) + 5)
+    # Adjusted: if exactly 1 line, make height 18 px. Otherwise keep previous formula.
+    if line_count == 1:
+        calculated_height = 18
+    else:
+        calculated_height = max(10, (line_count * 15) + 5)
     if canvas_height is not None:
         height = max(calculated_height, canvas_height)
     else:
@@ -217,12 +220,9 @@ def create_sleepoptie_single_image(
     filename = f"{tekst_titel}_{tekst_itemnummer}.png"
     return img, filename
 
-
 st.set_page_config(page_title="Sleepoptie en Tabel Generator", layout="wide")
 manual_filename = "Nieuwe Itemtypes Handleiding Invoer TOM.docx"
 base_dir = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
-
-
 css_force_dark = """
 <script>
   // Force the data-theme attribute to dark for components that look at it
@@ -273,7 +273,6 @@ css_force_dark = """
 </style>
 """
 st.markdown(css_force_dark, unsafe_allow_html=True)
-
 st.markdown(
     """
     <style>
@@ -343,9 +342,7 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
-
-st.info("Laatste Update: 2026-04-28 - Download knop met handleiding")
-
+st.info("Laatste Update: 2026-05-19 - Grootte van sleepopties bij regel gefixt, dank Kirsten :-)")
 manual_path = os.path.join(base_dir, manual_filename)
 try:
     with open(manual_path, "rb") as f:
@@ -362,15 +359,16 @@ except FileNotFoundError:
 except Exception as e:
     st.error(f"Kon handleiding niet laden: {e}")
 
-
 st.caption("Links vul je informatie in, rechts zie je de plaatjes.")
 mode = st.selectbox(
     "Tabel maken of Sleepopties maken?",
     ["Tabel Maken", "Sleepopties Maken"],
     index=0,
 )
+
 # Two-column layout: left for inputs, right for preview/downloads
 left, right = st.columns([1, 1.2])
+
 # ---------- Tables mode ----------
 if mode == "Tabel Maken":
     with left:
@@ -477,9 +475,11 @@ if mode == "Tabel Maken":
                     )
                 )
                 row1_height = int(heading_lines * 18)
+                # Fixed typo here: use multiplication
                 row2_height = int(longest_rows * 20 * answers_per_box)
                 row_heights = [row1_height, row2_height]
                 st.write(f"De rij waar de antwoorden in gesleept moeten worden wordt {row2_height} pixels ( {longest_rows} × 20 × {answers_per_box} )")
+
         # Create TableImage instance
         table = TableImage(
             rows=rows,
@@ -507,6 +507,7 @@ if mode == "Tabel Maken":
                     else:
                         bold_cell = bold_choice
                 table.set_text(r, c, text, bold=bold_cell)
+
     with right:
         st.subheader("Preview & Downloaden")
         preview_placeholder = st.empty()
@@ -528,6 +529,7 @@ if mode == "Tabel Maken":
             )
         except Exception as e:
             st.error(f"Kon tabel niet genereren: {e}")
+
 # ---------- Sleepopties mode ----------
 elif mode == "Sleepopties Maken":
     with left:
@@ -556,6 +558,7 @@ elif mode == "Sleepopties Maken":
             col_idx = 0 if idx < 4 else 1
             with opt_cols[idx % 2]:
                 options[idx] = st.text_area(f"Sleepoptie {L}", value="", height=80, key=f"opt_{L}")
+
     with right:
         st.subheader("Gegenereerde plaatjes")
         base_dir = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
@@ -565,7 +568,11 @@ elif mode == "Sleepopties Maken":
             if text and text.strip() != "":
                 wr = wrap_text(text.strip(), max_chars_per_line_sleep)
                 lc = wr["line_count"]
-                h = max(10, (lc * 15) + 5)
+                # Adjusted: if exactly 1 line, use 18 px, else keep previous formula
+                if lc == 1:
+                    h = 18
+                else:
+                    h = max(10, (lc * 15) + 5)
                 heights.append(h)
                 line_counts.append(lc)
         if not heights:
