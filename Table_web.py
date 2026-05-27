@@ -17,7 +17,7 @@ try:
 except Exception:
     pass
 
-# helper to create safe filenames
+# helper to create filenames
 def safe_filename(s):
     if s is None:
         return ""
