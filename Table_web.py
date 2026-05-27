@@ -6,7 +6,6 @@ import os
 import math
 import zipfile
 import re
-
 try:
     cfg_dir = os.path.join(os.getcwd(), ".streamlit")
     os.makedirs(cfg_dir, exist_ok=True)
@@ -16,7 +15,6 @@ try:
         f.write(cfg_content)
 except Exception:
     pass
-
 # helper to create safe filenames
 def safe_filename(s):
     if s is None:
@@ -25,10 +23,9 @@ def safe_filename(s):
     s = s.replace(" ", "_")
     s = re.sub(r"[^A-Za-z0-9._-]", "", s)
     return s
-
 # TableImage
 class TableImage:
-    def __init__(
+    def **init**(
         self,
         rows,
         cols,
@@ -71,11 +68,9 @@ class TableImage:
         self.font_size = int(font_size)
         self.cells = {}
         self.bold_cells = {}
-
     def set_text(self, row, col, text, bold=False):
         self.cells[(int(row), int(col))] = "" if text is None else str(text)
         self.bold_cells[(int(row), int(col))] = bool(bold)
-
     def draw(self):
         img = Image.new("RGB", (self.width, self.height), self.bg_color)
         draw = ImageDraw.Draw(img)
@@ -133,13 +128,11 @@ class TableImage:
                 draw.text((x + self.padding_left, current_y), line, fill=(0, 0, 0), font=font)
                 current_y += line_height
         return img
-
     def save(self, filename):
         img = self.draw()
         ext = os.path.splitext(filename)[1].lower()
         fmt = "PNG" if ext == ".png" else "JPEG"
         img.save(filename, fmt)
-
 def wrap_text(text, width):
     if text is None or str(text).strip() == "":
         return {"wrapped_text": "", "line_count": 0}
@@ -162,7 +155,6 @@ def wrap_text(text, width):
         wrapped_lines.append(current_line)
         lines_for_curr_text += 1
     return {"wrapped_text": "\n".join(wrapped_lines), "line_count": lines_for_curr_text}
-
 # sleepopties
 def create_sleepoptie_single_image(
     text,
@@ -219,7 +211,6 @@ def create_sleepoptie_single_image(
     draw.multiline_text((margin_x, margin_y), wrapped_text, fill="black", font=font, spacing=4)
     filename = f"{tekst_titel}_{tekst_itemnummer}.png"
     return img, filename
-
 st.set_page_config(page_title="Sleepoptie en Tabel Generator", layout="wide")
 manual_filename = "Nieuwe Itemtypes Handleiding Invoer TOM.docx"
 base_dir = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
@@ -279,7 +270,7 @@ st.markdown(
       /* Page background */
       html, body, [data-testid="stAppViewContainer"] {
         background: #000000 !important;
-        color: #ffffff;
+        color: #ffffff !important;
       }
       /* Main content container */
       .block-container {
@@ -342,7 +333,7 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
-st.info("Laatste Update: 2026-05-19 - Grootte van sleepopties bij regel gefixt, dank Kirsten :-)")
+st.info("Laatste Update: 2026-05-27 - Grootte van sleepopties bij regel gefixt, dank Kirsten :-)")
 manual_path = os.path.join(base_dir, manual_filename)
 try:
     with open(manual_path, "rb") as f:
@@ -358,17 +349,14 @@ except FileNotFoundError:
     st.warning(f"Handleiding niet gevonden: {manual_filename}. Zet het bestand in de app-map ({base_dir}).")
 except Exception as e:
     st.error(f"Kon handleiding niet laden: {e}")
-
 st.caption("Links vul je informatie in, rechts zie je de plaatjes.")
 mode = st.selectbox(
     "Tabel maken of Sleepopties maken?",
     ["Tabel Maken", "Sleepopties Maken"],
     index=0,
 )
-
 # Two-column layout: left for inputs, right for preview/downloads
 left, right = st.columns([1, 1.2])
-
 # ---------- Tables mode ----------
 if mode == "Tabel Maken":
     with left:
@@ -427,8 +415,13 @@ if mode == "Tabel Maken":
                         help="Kijk bij de afbeeldingen die je gemaakt hebt voor de sleepopties hoeveel regels tekst het langste antwoord heeft.",
                     )
                 )
-                answer_row_height = int(longest_rows * 20)
-                st.write(f"De rijen waar de antwoorden in gesleept moeten worden worden {answer_row_height} pixels ( {longest_rows} × 20 )")
+                # Als het langste antwoord 1 regel is, wil je een iets grotere rij: 22 px.
+                if longest_rows == 1:
+                    answer_row_height = 22
+                else:
+                    answer_row_height = int(longest_rows * 20)
+                multiplier = 22 if longest_rows == 1 else 20
+                st.write(f"De rijen waar de antwoorden in gesleept moeten worden worden {answer_row_height} pixels ( {longest_rows} × {multiplier} )")
                 if heading_lines > 0:
                     first_row_height = heading_lines * 18
                     if rows == 1:
@@ -476,10 +469,9 @@ if mode == "Tabel Maken":
                 )
                 row1_height = int(heading_lines * 18)
                 # Fixed typo here: use multiplication
-                row2_height = int(longest_rows * 20 * answers_per_box)
+                row2_height = int(longest_rows _20_ answers_per_box)
                 row_heights = [row1_height, row2_height]
                 st.write(f"De rij waar de antwoorden in gesleept moeten worden wordt {row2_height} pixels ( {longest_rows} × 20 × {answers_per_box} )")
-
         # Create TableImage instance
         table = TableImage(
             rows=rows,
@@ -507,7 +499,6 @@ if mode == "Tabel Maken":
                     else:
                         bold_cell = bold_choice
                 table.set_text(r, c, text, bold=bold_cell)
-
     with right:
         st.subheader("Preview & Downloaden")
         preview_placeholder = st.empty()
@@ -529,7 +520,6 @@ if mode == "Tabel Maken":
             )
         except Exception as e:
             st.error(f"Kon tabel niet genereren: {e}")
-
 # ---------- Sleepopties mode ----------
 elif mode == "Sleepopties Maken":
     with left:
@@ -558,7 +548,6 @@ elif mode == "Sleepopties Maken":
             col_idx = 0 if idx < 4 else 1
             with opt_cols[idx % 2]:
                 options[idx] = st.text_area(f"Sleepoptie {L}", value="", height=80, key=f"opt_{L}")
-
     with right:
         st.subheader("Gegenereerde plaatjes")
         base_dir = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
@@ -568,7 +557,7 @@ elif mode == "Sleepopties Maken":
             if text and text.strip() != "":
                 wr = wrap_text(text.strip(), max_chars_per_line_sleep)
                 lc = wr["line_count"]
-                # Adjusted: if exactly 1 line, use 18 px, else keep previous formula
+               
                 if lc == 1:
                     h = 18
                 else:
