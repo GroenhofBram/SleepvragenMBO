@@ -347,7 +347,7 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
-st.info("Laatste Update: 2026-05-19 - Grootte van sleepopties bij regel gefixt, dank Kirsten :-)")
+st.info("Laatste Update: 2026-05-27 - Grootte van sleepopties bij 1 regel gefixt, dank Kirsten :-)")
 
 manual_path = os.path.join(base_dir, manual_filename)
 try:
