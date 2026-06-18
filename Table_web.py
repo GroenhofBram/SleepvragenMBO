@@ -1,4 +1,3 @@
-```python
 import streamlit as st
 from PIL import Image, ImageDraw, ImageFont
 import textwrap
@@ -596,4 +595,3 @@ elif mode == "Forms Feedbacktool":
                         st.download_button(label="Download alle documenten als ZIP", data=zip_buf.getvalue(), file_name=f"FB_Gebundeld_{today_str}.zip", mime="application/zip", key="fb_zip_all")
             except Exception as e:
                 status.error(f"Fout bij verwerken: {e}")
-```
