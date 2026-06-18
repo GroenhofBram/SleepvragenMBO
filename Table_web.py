@@ -367,8 +367,8 @@ except Exception as e:
 
 st.caption("Links vul je informatie in, rechts zie je de plaatjes.")
 mode = st.selectbox(
-    "Tabel maken of Sleepopties maken?",
-    ["Tabel Maken", "Sleepopties Maken"],
+    "Tabel maken, Sleepopties maken of Forms Feedbacktool?",
+    ["Tabel Maken", "Sleepopties Maken", "Forms Feedbacktool"],
     index=0,
 )
 
@@ -644,3 +644,78 @@ elif mode == "Sleepopties Maken":
                     mime="application/zip",
                     key="download_all_zip"
                 )
+
+
+# --- Forms Feedbacktool mode ----
+elif mode == "Forms Feedbacktool":
+    import pandas as pd
+    from docx import Document
+    import tempfile
+    from datetime import date
+
+    # helper functions (python versions of your R helpers)
+    def reformat_data(df: pd.DataFrame) -> pd.DataFrame:
+        df = df.copy()
+        if "Geef uw naam" in df.columns:
+            df = df.rename(columns={"Geef uw naam": "VC lid"})
+        # ensure 'VC lid' exists
+        if "VC lid" not in df.columns:
+            df["VC lid"] = ""
+        # replace NA in string/object columns with "geen opmerkingen"
+        for c in df.select_dtypes(include=["object", "string"]).columns:
+            df[c] = df[c].fillna("geen opmerkingen").astype(str)
+        # for numeric columns, keep as-is but fillna
+        df = df.fillna("geen opmerkingen")
+        return df
+
+    def sanitize_filename(name: str) -> str:
+        if name is None:
+            return ""
+        # keep letters, numbers, dot, underscore, hyphen
+        return re.sub(r"[^0-9A-Za-z._-]", "_", name)
+
+    def extract_column_name(col_name: str) -> str:
+        if not isinstance(col_name, str):
+            return str(col_name)
+        parts = col_name.split()
+        # iterate from end and return from first part containing an uppercase letter
+        for i in range(len(parts) - 1, -1, -1):
+            if re.search(r"[A-Z]", parts[i]):
+                return " ".join(parts[i:])
+        return col_name
+
+    st.header("Forms Feedbacktool — Word export van Forms-feedback")
+    st.write("Upload een Excel-bestand (.xlsx) uit Forms. Deze tool maakt per CG-prefix een Wordbestand met tabellen.")
+
+    uploaded = st.file_uploader("Upload Excel file", type=["xlsx"], accept_multiple_files=False)
+    process = st.button("Generate Word Documents")
+
+    # UI area for showing created files / downloads
+    download_area = st.empty()
+    status = st.empty()
+
+    if process:
+        if uploaded is None:
+            st.warning("Upload eerst een .xlsx bestand.")
+        else:
+            try:
+                # Read excel
+                df = pd.read_excel(uploaded, engine="openpyxl")
+                df = reformat_data(df)
+
+                # find CG columns (start with CG followed by digits)
+                cg_columns = [c for c in df.columns if re.match(r"^CG\d+", str(c))]
+                if not cg_columns:
+                    status.error("Geen CG-columns gevonden (kolommen die beginnen met 'CG' + cijfers).")
+                else:
+                    # prefixes are e.g. CG1, CG2 extracted from names like CG1_something
+                    prefixes = sorted({re.match(r"^(CG\d+)", c).group(1) for c in cg_columns})
+                    generated = []  # list of tuples (filename, bytes)
+                    today_str = date.today().isoformat()
+
+                    for prefix in prefixes:
+                        doc = Document()
+                        # select columns that begin with this prefix
+                        cols_for_prefix = [c for c in cg_columns if str(c).startswith(prefix)]
+                        for cg_col in cols_for_prefix:
+                status.error(f"Fout bij verwerken: {e}")
