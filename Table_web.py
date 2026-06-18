@@ -8,7 +8,7 @@ import zipfile
 import re
 from datetime import date
 
-# Try to write dark theme config (harmless if fails)
+
 try:
     cfg_dir = os.path.join(os.getcwd(), ".streamlit")
     os.makedirs(cfg_dir, exist_ok=True)
@@ -531,8 +531,8 @@ elif mode == "Forms Feedbacktool":
             pass
         return run
 
-    st.header("Forms Feedbacktool — Word export")
-    st.write("Upload een Excel (.xlsx). Kies alleen lettertype en lettergrootte. Word-bestanden krijgen gridlines; kop en datum zijn vetgedrukt. Er is geen preview in de app.")
+    st.header("Forms Feedbacktool — Van Forms naar Word")
+    st.write("Upload een Excel (.xlsx). Voor 2F: Per CG een apart bestand. Voor 3F: Alles in 1 bestand. Dit komt doordat de Forms anders opgesteld zijn. Als er in de toekomst wat verandert aan het Forms-formulier, dan kan het programma 'kapot' gaan. Laat dit dan weten, en dan zal ik kijken of het snel te fixen is! :)")
 
     # minimal user input
     font_family = st.selectbox("Lettertype voor Word", ["Calibri", "Times New Roman", "Arial"], index=0)
