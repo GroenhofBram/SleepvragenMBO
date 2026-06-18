@@ -8,8 +8,7 @@ import zipfile
 import re
 from datetime import date
 
-
-# Try to ensure Streamlit uses dark theme config file
+# Ensure dark theme config if possible
 try:
     cfg_dir = os.path.join(os.getcwd(), ".streamlit")
     os.makedirs(cfg_dir, exist_ok=True)
@@ -29,7 +28,7 @@ def safe_filename(s):
     s = re.sub(r"[^A-Za-z0-9._-]", "", s)
     return s
 
-# TableImage
+# TableImage class and helpers (unchanged from your original app)
 class TableImage:
     def __init__(
         self,
@@ -166,7 +165,6 @@ def wrap_text(text, width):
         lines_for_curr_text += 1
     return {"wrapped_text": "\n".join(wrapped_lines), "line_count": lines_for_curr_text}
 
-# sleepopties
 def create_sleepoptie_single_image(
     text,
     tekst_titel="title",
@@ -223,7 +221,7 @@ def create_sleepoptie_single_image(
     filename = f"{tekst_titel}_{tekst_itemnummer}.png"
     return img, filename
 
-# Streamlit page config and CSS
+# Streamlit UI and CSS (same as before)
 st.set_page_config(page_title="Sleepoptie en Tabel Generator", layout="wide")
 manual_filename = "Nieuwe Itemtypes Handleiding Invoer TOM.docx"
 base_dir = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
@@ -349,7 +347,7 @@ st.markdown(
 )
 st.info("Laatste Update: 2026-05-27 - Grootte van sleepopties bij 1 regel gefixt, dank Kirsten :-)")
 
-# Provide download for manual if present
+# Manual download
 manual_path = os.path.join(base_dir, manual_filename)
 try:
     with open(manual_path, "rb") as f:
@@ -641,28 +639,29 @@ elif mode == "Sleepopties Maken":
                     key="download_all_zip"
                 )
 
-# ---------- Forms Feedbacktool mode ----------
+# ---------- Forms Feedbacktool mode (nieuw met preview instellingen) ----------
 elif mode == "Forms Feedbacktool":
-    # Import heavy deps only when this mode is used
+    # Import heavy deps only when needed
     try:
         import pandas as pd  # reading excel and dataframe ops
         from docx import Document  # create Word docs
-    except Exception as e:
+        from docx.shared import Inches, Pt
+        from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
+        from docx.oxml import OxmlElement
+        from docx.oxml.ns import qn
+    except Exception:
         st.error("Deze feature vereist extra packages: pandas en python-docx. Installeer met: pip install pandas python-docx openpyxl")
         st.stop()
 
+    # Helpers (translated from your R functions + extras)
     def reformat_data(df: pd.DataFrame) -> pd.DataFrame:
         df = df.copy()
-        # rename column if present
         if "Geef uw naam" in df.columns:
             df = df.rename(columns={"Geef uw naam": "VC lid"})
-        # ensure 'VC lid' exists
         if "VC lid" not in df.columns:
             df["VC lid"] = ""
-        # Replace NA in string/object columns with "geen opmerkingen"
         for c in df.select_dtypes(include=["object", "string"]).columns:
             df[c] = df[c].fillna("geen opmerkingen").astype(str)
-        # For any remaining NA (numeric etc.), fill with text
         df = df.fillna("geen opmerkingen")
         return df
 
@@ -675,65 +674,245 @@ elif mode == "Forms Feedbacktool":
         if not isinstance(col_name, str):
             col_name = str(col_name)
         parts = col_name.split()
-        # iterate from end and return from first part containing an uppercase letter
         for i in range(len(parts) - 1, -1, -1):
             if re.search(r"[A-Z]", parts[i]):
                 return " ".join(parts[i:])
         return col_name
 
+    # set background color for a cell (docx XML)
+    def set_cell_bg(cell, color_hex: str):
+        # color_hex like "#F2F2F2" or "F2F2F2"
+        c = color_hex.lstrip("#")
+        tc = cell._tc
+        tcPr = tc.get_or_add_tcPr()
+        shd = OxmlElement("w:shd")
+        shd.set(qn("w:fill"), c)
+        tcPr.append(shd)
+
     st.header("Forms Feedbacktool — Word export van Forms-feedback")
-    st.write("Upload een Excel-bestand (.xlsx) uit Forms. Deze tool maakt per CG-prefix een Wordbestand met tabellen.")
+    st.write("Upload een Excel-bestand (.xlsx) uit Forms. Kies hieronder hoe de tabellen eruit moeten zien (preview) en klik daarna op 'Generate Word Documents'.")
+
+    # Appearance controls
+    with st.expander("Tabel uiterlijk (preview & toepassen op Word)", expanded=True):
+        font_family = st.selectbox("Lettertype", ["Times New Roman", "Arial", "Calibri"], index=0)
+        font_size = st.number_input("Lettergrootte (pt)", min_value=8, max_value=20, value=11, step=1)
+        header_bold = st.checkbox("Kop vetgedrukt", value=True)
+        header_bg = st.color_picker("Kleur kop achtergrond (hex)", value="#F2F2F2")
+        table_style_choice = st.selectbox(
+            "Tabelstijl (Word, als beschikbaar)",
+            ["Table Grid", "Light Shading", "Light List Accent 1", "None"],
+            index=0,
+            help="Als de geselecteerde stijl in python-docx document.styles beschikbaar is, wordt die gebruikt; anders default."
+        )
+        col_width_mode = st.selectbox("Kolombreedte", ["Auto", "Custom percentage"], index=0)
+        if col_width_mode == "Custom percentage":
+            first_col_pct = st.slider("Breedte eerste kolom (VC lid) (%)", min_value=10, max_value=90, value=30)
+        else:
+            first_col_pct = None
+        second_col_align = st.selectbox("Uitlijning tweede kolom (inhoud)", ["Left", "Center", "Right"], index=0)
 
     uploaded = st.file_uploader("Upload Excel file (.xlsx)", type=["xlsx"], accept_multiple_files=False)
+    # Allow user to preview a specific CG-column before generating all docs
+    preview_section = st.expander("Preview een specifieke CG-tabel (HTML preview)", expanded=True)
+    with preview_section:
+        st.write("Na upload kies je een CG-kolom hieronder en klik op 'Toon preview' om te zien hoe de tabel in de Word-docs eruit zal zien.")
+        cg_choice = st.selectbox("Kies CG-kolom voor preview (na upload)", options=["(upload eerst een bestand)"])
+        show_preview = st.button("Toon preview")
+
     process = st.button("Generate Word Documents")
 
     download_area = st.container()
     status = st.empty()
 
+    # Handle dynamic list of CG columns for preview dropdown
+    if uploaded is not None:
+        try:
+            df_uploaded = pd.read_excel(uploaded, engine="openpyxl")
+            df_uploaded = reformat_data(df_uploaded)
+            cg_columns_all = [c for c in df_uploaded.columns if re.match(r"^CG\d+", str(c))]
+            cg_options = ["(kies)"] + cg_columns_all
+        except Exception:
+            cg_options = ["(geen)"]
+    else:
+        cg_options = ["(upload eerst een bestand)"]
+    # update cg_choice selectbox (workaround to replace previously created widget)
+    # Note: We can't directly reassign the original selectbox; so we just display another selectbox if uploaded.
+    if uploaded is not None:
+        with preview_section:
+            cg_choice = st.selectbox("Kies CG-kolom voor preview (na upload)", options=cg_options, index=0, key="cg_preview_select")
+
+    # Show HTML preview when requested
+    if uploaded is not None and show_preview:
+        if cg_choice in (None, "(kies)", "(geen)", "(upload eerst een bestand)"):
+            st.warning("Kies eerst een geldige CG-kolom voor preview.")
+        else:
+            try:
+                df = df_uploaded.copy()
+                if cg_choice not in df.columns:
+                    st.error("Gekozen kolom niet gevonden.")
+                else:
+                    # Build a small dataframe for preview (first N rows)
+                    current_df = df[["VC lid", cg_choice]].copy()
+                    simple_name = extract_column_name(str(cg_choice))
+                    current_df.columns = ["VC lid", simple_name]
+                    preview_df = current_df.head(20).fillna("geen opmerkingen")
+
+                    # Build CSS according to user choices
+                    css = f"""
+                        <style>
+                        table.custom {{ border-collapse: collapse; width: 100%; font-family: '{font_family}', serif; font-size: {font_size}pt; }}
+                        table.custom th, table.custom td {{ padding: 8px 12px; vertical-align: top; }}
+                        table.custom th {{ font-weight: {'bold' if header_bold else 'normal'}; background: {header_bg}; text-align: left; }}
+                        table.custom td {{ text-align: {'left' if second_col_align=='Left' else 'center' if second_col_align=='Center' else 'right'}; }}
+                        </style>
+                    """
+                    # Build HTML table from preview_df with optional custom column width
+                    if first_col_pct:
+                        first_w = first_col_pct
+                        second_w = 100 - first_col_pct
+                        col_style = f"<colgroup><col style='width:{first_w}%' /><col style='width:{second_w}%' /></colgroup>"
+                    else:
+                        col_style = ""
+                    html_table = preview_df.to_html(index=False, classes="custom", table_id="preview_table", escape=False)
+                    # Inject colgroup and CSS (replace <table ...> with <table> containing colgroup)
+                    html_table = html_table.replace("<table border=\"1\" class=\"dataframe custom\" id=\"preview_table\">",
+                                                    f"<table class=\"custom\" id=\"preview_table\">")
+                    # Insert colgroup after opening table tag
+                    html_table = html_table.replace("<table class=\"custom\" id=\"preview_table\">", f"<table class=\"custom\" id=\"preview_table\">{col_style}")
+                    st.markdown(css + html_table, unsafe_allow_html=True)
+            except Exception as e:
+                st.error(f"Fout bij preview genereren: {e}")
+
+    # When process pressed -> create Word docs using appearance settings
     if process:
         if uploaded is None:
             st.warning("Upload eerst een .xlsx bestand.")
         else:
             try:
-                # Read excel
                 df = pd.read_excel(uploaded, engine="openpyxl")
                 df = reformat_data(df)
-
-                # find CG columns (start with CG followed by digits)
                 cg_columns = [c for c in df.columns if re.match(r"^CG\d+", str(c))]
                 if not cg_columns:
                     status.error("Geen CG-columns gevonden (kolommen die beginnen met 'CG' + cijfers).")
                 else:
-                    # prefixes e.g. 'CG1' extracted
                     prefixes = sorted({re.match(r"^(CG\d+)", str(c)).group(1) for c in cg_columns})
                     generated = []  # list of tuples (filename, bytes)
                     today_str = date.today().isoformat()
+
+                    # total width to use for custom widths (in inches)
+                    total_width_inch = 6.0
 
                     for prefix in prefixes:
                         doc = Document()
                         cols_for_prefix = [c for c in cg_columns if str(c).startswith(prefix)]
                         for cg_col in cols_for_prefix:
-                            # Select 'VC lid' and this column (if exists)
                             if cg_col not in df.columns:
                                 continue
                             current_df = df[["VC lid", cg_col]].copy()
                             simple_name = extract_column_name(str(cg_col))
                             current_df.columns = ["VC lid", simple_name]
-
-                            # Add heading and date
+                            # Add heading & date
                             doc.add_paragraph(str(cg_col))
                             doc.add_paragraph(f"VC {today_str}")
 
-                            # Add a table: header + rows
+                            # Create table
                             table = doc.add_table(rows=1, cols=2)
+                            # Apply chosen table style if available
+                            if table_style_choice and table_style_choice != "None":
+                                try:
+                                    # Only set if exists
+                                    if table_style_choice in [s.name for s in doc.styles]:
+                                        table.style = table_style_choice
+                                    else:
+                                        # try common fallback names: "Table Grid"
+                                        if "Table Grid" in [s.name for s in doc.styles]:
+                                            table.style = "Table Grid"
+                                except Exception:
+                                    pass
+
                             hdr_cells = table.rows[0].cells
                             hdr_cells[0].text = "VC lid"
                             hdr_cells[1].text = simple_name
 
+                            # Header formatting
+                            for i, cell in enumerate(hdr_cells):
+                                # set background
+                                try:
+                                    set_cell_bg(cell, header_bg)
+                                except Exception:
+                                    pass
+                                # format runs in header
+                                for para in cell.paragraphs:
+                                    for run in para.runs:
+                                        run.font.name = font_family
+                                        try:
+                                            run._element.rPr.rFonts.set(qn('w:eastAsia'), font_family)
+                                        except Exception:
+                                            pass
+                                        run.font.size = Pt(font_size)
+                                        run.font.bold = True if header_bold else False
+                                    # header alignment
+                                    if second_col_align == "Left":
+                                        para.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
+                                    elif second_col_align == "Center":
+                                        para.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+                                    else:
+                                        para.alignment = WD_PARAGRAPH_ALIGNMENT.RIGHT
+
+                            # Fill rows
                             for _, row in current_df.iterrows():
                                 r_cells = table.add_row().cells
-                                r_cells[0].text = str(row["VC lid"])
-                                r_cells[1].text = str(row[simple_name])
+                                # Left cell (VC lid)
+                                left_para = r_cells[0].paragraphs[0]
+                                left_para.text = str(row["VC lid"])
+                                left_para.runs[0].font.name = font_family
+                                try:
+                                    left_para.runs[0]._element.rPr.rFonts.set(qn('w:eastAsia'), font_family)
+                                except Exception:
+                                    pass
+                                left_para.runs[0].font.size = Pt(font_size)
+                                # alignment default left
+                                left_para.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
+
+                                # Right cell (answer)
+                                right_para = r_cells[1].paragraphs[0]
+                                right_para.text = str(row[simple_name])
+                                right_para.runs[0].font.name = font_family
+                                try:
+                                    right_para.runs[0]._element.rPr.rFonts.set(qn('w:eastAsia'), font_family)
+                                except Exception:
+                                    pass
+                                right_para.runs[0].font.size = Pt(font_size)
+                                # alignment based on user setting
+                                if second_col_align == "Left":
+                                    right_para.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
+                                elif second_col_align == "Center":
+                                    right_para.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+                                else:
+                                    right_para.alignment = WD_PARAGRAPH_ALIGNMENT.RIGHT
+
+                            # Apply custom column widths if requested
+                            if first_col_pct:
+                                try:
+                                    first_inch = (first_col_pct / 100.0) * total_width_inch
+                                    second_inch = total_width_inch - first_inch
+                                    # set widths for columns
+                                    for idx_col, w in enumerate([first_inch, second_inch]):
+                                        for cell in table.columns[idx_col].cells:
+                                            tcPr = cell._tc.get_or_add_tcPr()
+                                            tcW = OxmlElement('w:tcW')
+                                            tcW.set(qn('w:w'), str(int(w * 914400)))  # EMU units per inch
+                                            tcW.set(qn('w:type'), 'dxa')
+                                            # remove existing tcW if present
+                                            try:
+                                                existing = tcPr.xpath('w:tcW')
+                                                for e in existing:
+                                                    tcPr.remove(e)
+                                            except Exception:
+                                                pass
+                                            tcPr.append(tcW)
+                                except Exception:
+                                    pass
 
                             doc.add_page_break()
 
