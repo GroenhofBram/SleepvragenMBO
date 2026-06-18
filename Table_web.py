@@ -477,29 +477,30 @@ elif mode == "Forms Feedbacktool":
                 return " ".join(parts[i:])
         return col_name
 
-    # ensure table has gridlines (set tblBorders)
+    # new robust ensure_table_grid that doesn't rely on get_or_add_tblPr
     def ensure_table_grid(table):
-        tbl = table._tbl
-        tblPr = tbl.get_or_add_tblPr()
+        tbl = table._tbl  # lxml element
+        tblPr = tbl.find(qn("w:tblPr"))
+        if tblPr is None:
+            tblPr = OxmlElement("w:tblPr")
+            # insert as first child
+            tbl.insert(0, tblPr)
+        # remove existing borders if present
+        existing = tblPr.find(qn("w:tblBorders"))
+        if existing is not None:
+            tblPr.remove(existing)
         borders = OxmlElement("w:tblBorders")
         for border_name in ("top", "left", "bottom", "right", "insideH", "insideV"):
             node = OxmlElement(f"w:{border_name}")
             node.set(qn("w:val"), "single")
-            node.set(qn("w:sz"), "4")
+            node.set(qn("w:sz"), "4")       # thickness
             node.set(qn("w:space"), "0")
             node.set(qn("w:color"), "000000")
             borders.append(node)
-        # remove existing and append
-        try:
-            existing = tblPr.xpath("w:tblBorders")
-            for e in existing:
-                tblPr.remove(e)
-        except Exception:
-            pass
         tblPr.append(borders)
 
     st.header("Forms Feedbacktool — Word export")
-    st.write("Upload een Excel (.xlsx). Kies alleen lettertype en lettergrootte. De preview is verwijderd; Word-bestanden krijgen gridlines, kop en datum zijn vetgedrukt.")
+    st.write("Upload een Excel (.xlsx). Kies alleen lettertype en lettergrootte. Word-bestanden krijgen gridlines; kop en datum zijn vetgedrukt.")
 
     # minimal user input
     font_family = st.selectbox("Lettertype voor Word", ["Calibri", "Times New Roman", "Arial"], index=0)
@@ -534,7 +535,7 @@ elif mode == "Forms Feedbacktool":
                             simple_name = extract_column_name(str(cg_col))
                             current_df.columns = ["VC lid", simple_name]
 
-                            # Heading bold
+                            # Heading (bold) and date (bold)
                             p_head = doc.add_paragraph()
                             run_h = p_head.add_run(str(cg_col))
                             run_h.font.bold = True
@@ -545,7 +546,6 @@ elif mode == "Forms Feedbacktool":
                             except Exception:
                                 pass
 
-                            # Date bold
                             p_date = doc.add_paragraph()
                             run_d = p_date.add_run(f"VC {today_str}")
                             run_d.font.bold = True
@@ -556,19 +556,17 @@ elif mode == "Forms Feedbacktool":
                             except Exception:
                                 pass
 
-                            # Create table with gridlines
+                            # Create table and ensure gridlines
                             table = doc.add_table(rows=1, cols=2)
                             ensure_table_grid(table)
 
-                            # Header cells: set text, then clear and set formatted run
+                            # Header texts and formatting
+                            hdr_texts = ["VC lid", simple_name]
                             hdr_cells = table.rows[0].cells
-                            hdr_cells[0].text = "VC lid"
-                            hdr_cells[1].text = simple_name
-                            for cell in hdr_cells:
-                                # clear paragraph text and add formatted run
+                            for i, cell in enumerate(hdr_cells):
                                 para = cell.paragraphs[0]
                                 para.text = ""
-                                run = para.add_run(cell.text if cell.text else "")
+                                run = para.add_run(hdr_texts[i])
                                 run.font.bold = True
                                 run.font.size = Pt(font_size_pt)
                                 try:
