@@ -1,3 +1,4 @@
+```python
 import streamlit as st
 from PIL import Image, ImageDraw, ImageFont
 import textwrap
@@ -509,11 +510,12 @@ elif mode == "Forms Feedbacktool":
 
     # Helper: format a paragraph so there is no extra spacing between lines / before/after
     def format_para_no_spacing(para, font_family, font_size_pt, bold=False):
+        from docx.shared import Pt as _Pt  # local import to avoid issues if docx missing earlier
         # paragraph spacing
         pf = para.paragraph_format
         try:
-            pf.space_before = Pt(0)
-            pf.space_after = Pt(0)
+            pf.space_before = _Pt(0)
+            pf.space_after = _Pt(0)
             pf.line_spacing = 1.0
         except Exception:
             pass
@@ -521,7 +523,7 @@ elif mode == "Forms Feedbacktool":
         text = para.text or ""
         para.text = ""
         run = para.add_run(text)
-        run.font.size = Pt(font_size_pt)
+        run.font.size = _Pt(font_size_pt)
         run.font.bold = bold
         try:
             run.font.name = font_family
@@ -552,11 +554,22 @@ elif mode == "Forms Feedbacktool":
                 generated = []
                 today_str = date.today().isoformat()
 
+                # columns to exclude when building the single big document
+                exclude_columns_set = {
+                    "Tijd van laatste wijziging",
+                    "Naam",
+                    "E-mail",
+                    "Tijd van voltooien",
+                    "Begintijd",
+                    "ID",
+                }
+
                 if not cg_columns:
                     # No CG columns: create one big Word file with all (other) columns as separate tables
-                    columns_to_process = [c for c in df.columns if c != "VC lid"]
+                    # Exclude VC lid and the specified meta columns
+                    columns_to_process = [c for c in df.columns if c != "VC lid" and (str(c).strip() not in exclude_columns_set)]
                     if not columns_to_process:
-                        status.error("Geen kolommen gevonden om in het document te zetten (alleen 'VC lid' aanwezig).")
+                        status.error("Geen kolommen gevonden om in het document te zetten (alleen 'VC lid' en/of uitgesloten meta-kolommen aanwezig).")
                     else:
                         doc = Document()
                         for col in columns_to_process:
@@ -607,7 +620,7 @@ elif mode == "Forms Feedbacktool":
 
                             doc.add_page_break()
 
-                        filename = f"{today_str}_FB_AllTables.docx"
+                        filename = f"{today_str}_allefeedback.docx"
                         bio = io.BytesIO()
                         doc.save(bio)
                         bio.seek(0)
@@ -692,3 +705,4 @@ elif mode == "Forms Feedbacktool":
                     st.download_button(label="Download alle documenten als ZIP", data=zip_buf.getvalue(), file_name=f"FB_Gebundeld_{today_str}.zip", mime="application/zip", key="fb_zip_all")
             except Exception as e:
                 status.error(f"Fout bij verwerken: {e}")
+```
