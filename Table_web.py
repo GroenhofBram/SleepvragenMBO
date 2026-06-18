@@ -6,7 +6,12 @@ import os
 import math
 import zipfile
 import re
+from datetime import date
 
+# Note: pandas and python-docx are imported later inside the Forms branch to avoid hard failure
+# if they are not installed and the user doesn't use that feature.
+
+# Try to ensure Streamlit uses dark theme config file
 try:
     cfg_dir = os.path.join(os.getcwd(), ".streamlit")
     os.makedirs(cfg_dir, exist_ok=True)
@@ -140,7 +145,6 @@ class TableImage:
         fmt = "PNG" if ext == ".png" else "JPEG"
         img.save(filename, fmt)
 
-
 def wrap_text(text, width):
     if text is None or str(text).strip() == "":
         return {"wrapped_text": "", "line_count": 0}
@@ -163,7 +167,6 @@ def wrap_text(text, width):
         wrapped_lines.append(current_line)
         lines_for_curr_text += 1
     return {"wrapped_text": "\n".join(wrapped_lines), "line_count": lines_for_curr_text}
-
 
 # sleepopties
 def create_sleepoptie_single_image(
@@ -222,7 +225,7 @@ def create_sleepoptie_single_image(
     filename = f"{tekst_titel}_{tekst_itemnummer}.png"
     return img, filename
 
-
+# Streamlit page config and CSS
 st.set_page_config(page_title="Sleepoptie en Tabel Generator", layout="wide")
 manual_filename = "Nieuwe Itemtypes Handleiding Invoer TOM.docx"
 base_dir = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
@@ -277,7 +280,6 @@ css_force_dark = """
 </style>
 """
 st.markdown(css_force_dark, unsafe_allow_html=True)
-
 st.markdown(
     """
     <style>
@@ -349,6 +351,7 @@ st.markdown(
 )
 st.info("Laatste Update: 2026-05-27 - Grootte van sleepopties bij 1 regel gefixt, dank Kirsten :-)")
 
+# Provide download for manual if present
 manual_path = os.path.join(base_dir, manual_filename)
 try:
     with open(manual_path, "rb") as f:
@@ -366,8 +369,9 @@ except Exception as e:
     st.error(f"Kon handleiding niet laden: {e}")
 
 st.caption("Links vul je informatie in, rechts zie je de plaatjes.")
+
 mode = st.selectbox(
-    "Tabel maken, Sleepopties maken of Forms Feedbacktool?",
+    "Kies functie:",
     ["Tabel Maken", "Sleepopties Maken", "Forms Feedbacktool"],
     index=0,
 )
@@ -486,11 +490,10 @@ if mode == "Tabel Maken":
                     )
                 )
                 row1_height = int(heading_lines * 18)
-                # Gebruik echte vermenigvuldiging voor de tweede rij
+                # Use real multiplication for the second row
                 row2_height = int(longest_rows * 20 * answers_per_box)
                 row_heights = [row1_height, row2_height]
                 st.write(f"De rij waar de antwoorden in gesleept moeten worden wordt {row2_height} pixels ( {longest_rows} × 20 × {answers_per_box} )")
-
         # Create TableImage instance
         table = TableImage(
             rows=rows,
@@ -501,13 +504,11 @@ if mode == "Tabel Maken":
             line_width=1,
             wrap_width=max_chars_per_line,
         )
-
         st.subheader("Vul de benodigde tekst per cel van de tabel in, de cellen staan op dezelfde volgorde als de tabel (cel 1.1 is linksboven etc.).")
         if table_type.startswith("Type 2"):
             bold_choice = st.checkbox("Vink dit aan als de tekst dikgedrukt moet zijn", key="table_bold_all")
         else:
             bold_choice = False
-
         # Arrange cell inputs in a grid using columns to reduce scrolling
         for r in range(rows):
             cols_inputs = st.columns(cols)
@@ -520,11 +521,9 @@ if mode == "Tabel Maken":
                     else:
                         bold_cell = bold_choice
                 table.set_text(r, c, text, bold=bold_cell)
-
     with right:
         st.subheader("Preview & Downloaden")
         preview_placeholder = st.empty()
-        # Generate preview automatically (no button). Streamlit reruns when any input changes.
         try:
             img = table.draw()
             prefix = (safe_filename(vakcode) + "_") if (vakcode and str(vakcode).strip()) else ""
@@ -570,7 +569,6 @@ elif mode == "Sleepopties Maken":
         for idx, L in enumerate(letters):
             with opt_cols[idx % 2]:
                 options[idx] = st.text_area(f"Sleepoptie {L}", value="", height=80, key=f"opt_{L}")
-
     with right:
         st.subheader("Gegenereerde plaatjes")
         base_dir = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
@@ -600,7 +598,7 @@ elif mode == "Sleepopties Maken":
                 if not text or text.strip() == "":
                     continue
                 letter = chr(64 + idx)
-                img, _ = create_sleepoptie_single_image(
+                img, _= create_sleepoptie_single_image(
                     text,
                     tekst_titel=tekst_titel,
                     tekst_itemnummer=f"{tekst_itemnummer}_{letter}",
@@ -645,38 +643,39 @@ elif mode == "Sleepopties Maken":
                     key="download_all_zip"
                 )
 
-
-# --- Forms Feedbacktool mode ----
+# ---------- Forms Feedbacktool mode ----------
 elif mode == "Forms Feedbacktool":
-    import pandas as pd
-    from docx import Document
-    import tempfile
-    from datetime import date
+    # Import heavy deps only when this mode is used
+    try:
+        import pandas as pd  # reading excel and dataframe ops
+        from docx import Document  # create Word docs
+    except Exception as e:
+        st.error("Deze feature vereist extra packages: pandas en python-docx. Installeer met: pip install pandas python-docx openpyxl")
+        st.stop()
 
-    # helper functions (python versions of your R helpers)
     def reformat_data(df: pd.DataFrame) -> pd.DataFrame:
         df = df.copy()
+        # rename column if present
         if "Geef uw naam" in df.columns:
             df = df.rename(columns={"Geef uw naam": "VC lid"})
         # ensure 'VC lid' exists
         if "VC lid" not in df.columns:
             df["VC lid"] = ""
-        # replace NA in string/object columns with "geen opmerkingen"
+        # Replace NA in string/object columns with "geen opmerkingen"
         for c in df.select_dtypes(include=["object", "string"]).columns:
             df[c] = df[c].fillna("geen opmerkingen").astype(str)
-        # for numeric columns, keep as-is but fillna
+        # For any remaining NA (numeric etc.), fill with text
         df = df.fillna("geen opmerkingen")
         return df
 
     def sanitize_filename(name: str) -> str:
         if name is None:
             return ""
-        # keep letters, numbers, dot, underscore, hyphen
-        return re.sub(r"[^0-9A-Za-z._-]", "_", name)
+        return re.sub(r"[^0-9A-Za-z._-]", "_", str(name))
 
     def extract_column_name(col_name: str) -> str:
         if not isinstance(col_name, str):
-            return str(col_name)
+            col_name = str(col_name)
         parts = col_name.split()
         # iterate from end and return from first part containing an uppercase letter
         for i in range(len(parts) - 1, -1, -1):
@@ -687,11 +686,10 @@ elif mode == "Forms Feedbacktool":
     st.header("Forms Feedbacktool — Word export van Forms-feedback")
     st.write("Upload een Excel-bestand (.xlsx) uit Forms. Deze tool maakt per CG-prefix een Wordbestand met tabellen.")
 
-    uploaded = st.file_uploader("Upload Excel file", type=["xlsx"], accept_multiple_files=False)
+    uploaded = st.file_uploader("Upload Excel file (.xlsx)", type=["xlsx"], accept_multiple_files=False)
     process = st.button("Generate Word Documents")
 
-    # UI area for showing created files / downloads
-    download_area = st.empty()
+    download_area = st.container()
     status = st.empty()
 
     if process:
@@ -708,14 +706,75 @@ elif mode == "Forms Feedbacktool":
                 if not cg_columns:
                     status.error("Geen CG-columns gevonden (kolommen die beginnen met 'CG' + cijfers).")
                 else:
-                    # prefixes are e.g. CG1, CG2 extracted from names like CG1_something
-                    prefixes = sorted({re.match(r"^(CG\d+)", c).group(1) for c in cg_columns})
+                    # prefixes e.g. 'CG1' extracted
+                    prefixes = sorted({re.match(r"^(CG\d+)", str(c)).group(1) for c in cg_columns})
                     generated = []  # list of tuples (filename, bytes)
                     today_str = date.today().isoformat()
 
                     for prefix in prefixes:
                         doc = Document()
-                        # select columns that begin with this prefix
                         cols_for_prefix = [c for c in cg_columns if str(c).startswith(prefix)]
                         for cg_col in cols_for_prefix:
-                            status.error(f"Fout bij verwerken: {e}")
+                            # Select 'VC lid' and this column (if exists)
+                            if cg_col not in df.columns:
+                                continue
+                            current_df = df[["VC lid", cg_col]].copy()
+                            simple_name = extract_column_name(str(cg_col))
+                            current_df.columns = ["VC lid", simple_name]
+
+                            # Add heading and date
+                            doc.add_paragraph(str(cg_col))
+                            doc.add_paragraph(f"VC {today_str}")
+
+                            # Add a table: header + rows
+                            table = doc.add_table(rows=1, cols=2)
+                            hdr_cells = table.rows[0].cells
+                            hdr_cells[0].text = "VC lid"
+                            hdr_cells[1].text = simple_name
+
+                            for _, row in current_df.iterrows():
+                                r_cells = table.add_row().cells
+                                r_cells[0].text = str(row["VC lid"])
+                                r_cells[1].text = str(row[simple_name])
+
+                            doc.add_page_break()
+
+                        sanitized_prefix = sanitize_filename(prefix)
+                        filename = f"{today_str}_FB_Gebundeld_{sanitized_prefix}.docx"
+
+                        # save doc to bytes
+                        bio = io.BytesIO()
+                        doc.save(bio)
+                        bio.seek(0)
+                        generated.append((filename, bio.read()))
+
+                    if not generated:
+                        status.warning("Geen documenten gegenereerd.")
+                    else:
+                        status.success(f"✅ {len(generated)} Word-document(en) gegenereerd.")
+                        with download_area:
+                            st.write("Downloads:")
+                            for idx, (fname, data_bytes) in enumerate(generated, start=1):
+                                st.download_button(
+                                    label=fname,
+                                    data=data_bytes,
+                                    file_name=sanitize_filename(fname) or fname,
+                                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                                    key=f"fb_download_{idx}",
+                                )
+
+                            # ZIP all
+                            zip_buf = io.BytesIO()
+                            with zipfile.ZipFile(zip_buf, "w", compression=zipfile.ZIP_DEFLATED) as z:
+                                for fname, data_bytes in generated:
+                                    z.writestr(sanitize_filename(fname) or fname, data_bytes)
+                            zip_buf.seek(0)
+                            st.download_button(
+                                label="Download alle documenten als ZIP",
+                                data=zip_buf.getvalue(),
+                                file_name=f"FB_Gebundeld_{today_str}.zip",
+                                mime="application/zip",
+                                key="fb_zip_all",
+                            )
+            except Exception as e:
+                status.error(f"Fout bij verwerken: {e}")
