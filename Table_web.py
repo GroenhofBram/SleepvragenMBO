@@ -448,7 +448,7 @@ elif mode == "Forms Feedbacktool":
         from docx.oxml import OxmlElement
         from docx.oxml.ns import qn
     except Exception:
-        st.error("missene packages: pandas en python-docx. Installeer met: pip install pandas python-docx openpyxl in requirements.txt; niet relevant voor niet-Bram")
+        st.error("Deze feature vereist extra packages: pandas en python-docx. Installeer met: pip install pandas python-docx openpyxl")
         st.stop()
 
     # helpers for Forms tool
@@ -477,9 +477,10 @@ elif mode == "Forms Feedbacktool":
                 return " ".join(parts[i:])
         return col_name
 
-
+    # robust ensure_table_grid that doesn't rely on get_or_add_tblPr
     def ensure_table_grid(table):
-        tbl = table._tbl  
+        tbl = table._tbl  # lxml element
+        # find or create tblPr
         tblPr = None
         for child in tbl:
             if child.tag == qn("w:tblPr"):
@@ -488,6 +489,7 @@ elif mode == "Forms Feedbacktool":
         if tblPr is None:
             tblPr = OxmlElement("w:tblPr")
             tbl.insert(0, tblPr)
+        # remove existing tblBorders if present
         existing = None
         for child in tblPr:
             if child.tag == qn("w:tblBorders"):
@@ -505,8 +507,9 @@ elif mode == "Forms Feedbacktool":
             borders.append(node)
         tblPr.append(borders)
 
-
+    # Helper: format a paragraph so there is no extra spacing between lines / before/after
     def format_para_no_spacing(para, font_family, font_size_pt, bold=False):
+        # paragraph spacing
         pf = para.paragraph_format
         try:
             pf.space_before = Pt(0)
@@ -514,6 +517,7 @@ elif mode == "Forms Feedbacktool":
             pf.line_spacing = 1.0
         except Exception:
             pass
+        # ensure text and run formatting
         text = para.text or ""
         para.text = ""
         run = para.add_run(text)
@@ -526,15 +530,15 @@ elif mode == "Forms Feedbacktool":
             pass
         return run
 
-    st.header("Forms Feedbacktool: Van forms naar Word")
-    st.write("Upload een Excel (.xlsx) bestand van de forms feedback. Je kunt dingen aanpassen, maar is denk ik niet nodig.")
+    st.header("Forms Feedbacktool — Word export")
+    st.write("Upload een Excel (.xlsx). Kies alleen lettertype en lettergrootte. Word-bestanden krijgen gridlines; kop en datum zijn vetgedrukt. Er is geen preview in de app.")
 
     # minimal user input
-    font_family = st.selectbox("Lettertype voor Word", ["Times New Roman", "Calibri", "Arial"], index=0)
+    font_family = st.selectbox("Lettertype voor Word", ["Calibri", "Times New Roman", "Arial"], index=0)
     font_size_pt = st.number_input("Lettergrootte (pt) voor Word", min_value=8, max_value=18, value=11, step=1)
 
-    uploaded = st.file_uploader("Upload Excel (.xlsx)", type=["xlsx"], accept_multiple_files=False)
-    process = st.button("Genereer Wordbestandjes")
+    uploaded = st.file_uploader("Upload Excel file (.xlsx)", type=["xlsx"], accept_multiple_files=False)
+    process = st.button("Generate Word Documents")
     status = st.empty()
 
     if process:
@@ -545,13 +549,72 @@ elif mode == "Forms Feedbacktool":
                 df_raw = pd.read_excel(uploaded, engine="openpyxl")
                 df = reformat_data(df_raw)
                 cg_columns = [c for c in df.columns if re.match(r"^CG\d+", str(c))]
-                if not cg_columns:
-                    status.error("Geen CG-columns gevonden (kolommen die beginnen met 'CG' + cijfers).")
-                else:
-                    prefixes = sorted({re.match(r"^(CG\d+)", str(c)).group(1) for c in cg_columns})
-                    generated = []
-                    today_str = date.today().isoformat()
+                generated = []
+                today_str = date.today().isoformat()
 
+                if not cg_columns:
+                    # No CG columns: create one big Word file with all (other) columns as separate tables
+                    columns_to_process = [c for c in df.columns if c != "VC lid"]
+                    if not columns_to_process:
+                        status.error("Geen kolommen gevonden om in het document te zetten (alleen 'VC lid' aanwezig).")
+                    else:
+                        doc = Document()
+                        for col in columns_to_process:
+                            simple_name = extract_column_name(str(col))
+                            current_df = df[["VC lid", col]].copy()
+                            current_df.columns = ["VC lid", simple_name]
+
+                            # Heading bold
+                            p_head = doc.add_paragraph()
+                            run_h = p_head.add_run(str(col))
+                            run_h.font.bold = True
+                            run_h.font.size = Pt(font_size_pt + 1)
+                            try:
+                                run_h.font.name = font_family
+                                run_h._element.rPr.rFonts.set(qn("w:eastAsia"), font_family)
+                            except Exception:
+                                pass
+                            # Date bold
+                            p_date = doc.add_paragraph()
+                            run_d = p_date.add_run(f"VC {today_str}")
+                            run_d.font.bold = True
+                            run_d.font.size = Pt(font_size_pt)
+                            try:
+                                run_d.font.name = font_family
+                                run_d._element.rPr.rFonts.set(qn("w:eastAsia"), font_family)
+                            except Exception:
+                                pass
+
+                            # Table with gridlines
+                            table = doc.add_table(rows=1, cols=2)
+                            ensure_table_grid(table)
+
+                            hdr_texts = ["VC lid", simple_name]
+                            hdr_cells = table.rows[0].cells
+                            for i, cell in enumerate(hdr_cells):
+                                para = cell.paragraphs[0]
+                                para.text = hdr_texts[i]
+                                format_para_no_spacing(para, font_family, font_size_pt, bold=True)
+
+                            for _, row in current_df.iterrows():
+                                r_cells = table.add_row().cells
+                                left_para = r_cells[0].paragraphs[0]
+                                left_para.text = str(row["VC lid"])
+                                format_para_no_spacing(left_para, font_family, font_size_pt, bold=False)
+                                right_para = r_cells[1].paragraphs[0]
+                                right_para.text = str(row[simple_name])
+                                format_para_no_spacing(right_para, font_family, font_size_pt, bold=False)
+
+                            doc.add_page_break()
+
+                        filename = f"{today_str}_FB_AllTables.docx"
+                        bio = io.BytesIO()
+                        doc.save(bio)
+                        bio.seek(0)
+                        generated.append((filename, bio.read()))
+                else:
+                    # There are CG columns: previous behavior - per-prefix docs
+                    prefixes = sorted({re.match(r"^(CG\d+)", str(c)).group(1) for c in cg_columns})
                     for prefix in prefixes:
                         doc = Document()
                         cols_for_prefix = [c for c in cg_columns if str(c).startswith(prefix)]
@@ -562,7 +625,7 @@ elif mode == "Forms Feedbacktool":
                             simple_name = extract_column_name(str(cg_col))
                             current_df.columns = ["VC lid", simple_name]
 
-                            # Heading (bold)
+                            # Heading (bold) and date (bold)
                             p_head = doc.add_paragraph()
                             run_h = p_head.add_run(str(cg_col))
                             run_h.font.bold = True
@@ -573,7 +636,6 @@ elif mode == "Forms Feedbacktool":
                             except Exception:
                                 pass
 
-                            # Date (bold)
                             p_date = doc.add_paragraph()
                             run_d = p_date.add_run(f"VC {today_str}")
                             run_d.font.bold = True
@@ -588,16 +650,14 @@ elif mode == "Forms Feedbacktool":
                             table = doc.add_table(rows=1, cols=2)
                             ensure_table_grid(table)
 
-                            # Header texts and formatting (no extra spacing)
                             hdr_texts = ["VC lid", simple_name]
                             hdr_cells = table.rows[0].cells
                             for i, cell in enumerate(hdr_cells):
                                 para = cell.paragraphs[0]
                                 para.text = hdr_texts[i]
-                                # apply no-spacing & bold formatting
                                 format_para_no_spacing(para, font_family, font_size_pt, bold=True)
 
-                            # Fill rows; ensure no extra spacing in each cell paragraph
+                            # Fill rows
                             for _, row in current_df.iterrows():
                                 r_cells = table.add_row().cells
                                 left_para = r_cells[0].paragraphs[0]
@@ -616,18 +676,19 @@ elif mode == "Forms Feedbacktool":
                         bio.seek(0)
                         generated.append((filename, bio.read()))
 
-                    if not generated:
-                        status.warning("Geen documenten gegenereerd.")
-                    else:
-                        status.success(f"✅ {len(generated)} Word-document(en) gegenereerd.")
-                        for idx, (fname, data_bytes) in enumerate(generated, start=1):
-                            st.download_button(label=fname, data=data_bytes, file_name=safe_filename(fname) or fname, mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", key=f"fb_download_{idx}")
-                        # ZIP all
-                        zip_buf = io.BytesIO()
-                        with zipfile.ZipFile(zip_buf, "w", compression=zipfile.ZIP_DEFLATED) as z:
-                            for fname, data_bytes in generated:
-                                z.writestr(safe_filename(fname) or fname, data_bytes)
-                        zip_buf.seek(0)
-                        st.download_button(label="Download alle documenten als ZIP", data=zip_buf.getvalue(), file_name=f"FB_Gebundeld_{today_str}.zip", mime="application/zip", key="fb_zip_all")
+                # Offer downloads
+                if not generated:
+                    status.warning("Geen documenten gegenereerd.")
+                else:
+                    status.success(f"✅ {len(generated)} Word-document(en) gegenereerd.")
+                    for idx, (fname, data_bytes) in enumerate(generated, start=1):
+                        st.download_button(label=fname, data=data_bytes, file_name=safe_filename(fname) or fname, mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", key=f"fb_download_{idx}")
+                    # ZIP all
+                    zip_buf = io.BytesIO()
+                    with zipfile.ZipFile(zip_buf, "w", compression=zipfile.ZIP_DEFLATED) as z:
+                        for fname, data_bytes in generated:
+                            z.writestr(safe_filename(fname) or fname, data_bytes)
+                    zip_buf.seek(0)
+                    st.download_button(label="Download alle documenten als ZIP", data=zip_buf.getvalue(), file_name=f"FB_Gebundeld_{today_str}.zip", mime="application/zip", key="fb_zip_all")
             except Exception as e:
                 status.error(f"Fout bij verwerken: {e}")
