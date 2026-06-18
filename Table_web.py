@@ -448,7 +448,7 @@ elif mode == "Forms Feedbacktool":
         from docx.oxml import OxmlElement
         from docx.oxml.ns import qn
     except Exception:
-        st.error("Deze feature vereist extra packages: pandas en python-docx. Installeer met: pip install pandas python-docx openpyxl")
+        st.error("missene packages: pandas en python-docx. Installeer met: pip install pandas python-docx openpyxl in requirements.txt; niet relevant voor niet-Bram")
         st.stop()
 
     # helpers for Forms tool
@@ -477,10 +477,9 @@ elif mode == "Forms Feedbacktool":
                 return " ".join(parts[i:])
         return col_name
 
-    # new robust ensure_table_grid that doesn't rely on get_or_add_tblPr
+
     def ensure_table_grid(table):
-        tbl = table._tbl  # lxml element
-        # find or create tblPr
+        tbl = table._tbl  
         tblPr = None
         for child in tbl:
             if child.tag == qn("w:tblPr"):
@@ -489,7 +488,6 @@ elif mode == "Forms Feedbacktool":
         if tblPr is None:
             tblPr = OxmlElement("w:tblPr")
             tbl.insert(0, tblPr)
-        # remove existing tblBorders if present
         existing = None
         for child in tblPr:
             if child.tag == qn("w:tblBorders"):
@@ -507,9 +505,8 @@ elif mode == "Forms Feedbacktool":
             borders.append(node)
         tblPr.append(borders)
 
-    # Helper: format a paragraph so there is no extra spacing between lines / before/after
+
     def format_para_no_spacing(para, font_family, font_size_pt, bold=False):
-        # paragraph spacing
         pf = para.paragraph_format
         try:
             pf.space_before = Pt(0)
@@ -517,7 +514,6 @@ elif mode == "Forms Feedbacktool":
             pf.line_spacing = 1.0
         except Exception:
             pass
-        # ensure text and run formatting
         text = para.text or ""
         para.text = ""
         run = para.add_run(text)
@@ -530,15 +526,15 @@ elif mode == "Forms Feedbacktool":
             pass
         return run
 
-    st.header("Forms Feedbacktool — Word export")
-    st.write("Upload een Excel (.xlsx). Kies alleen lettertype en lettergrootte. Word-bestanden krijgen gridlines; kop en datum zijn vetgedrukt. Er is geen preview in de app.")
+    st.header("Forms Feedbacktool: Van forms naar Word")
+    st.write("Upload een Excel (.xlsx) bestand van de forms feedback. Je kunt dingen aanpassen, maar is denk ik niet nodig.")
 
     # minimal user input
-    font_family = st.selectbox("Lettertype voor Word", ["Calibri", "Times New Roman", "Arial"], index=0)
+    font_family = st.selectbox("Lettertype voor Word", ["Times New Roman", "Calibri", "Arial"], index=0)
     font_size_pt = st.number_input("Lettergrootte (pt) voor Word", min_value=8, max_value=18, value=11, step=1)
 
-    uploaded = st.file_uploader("Upload Excel file (.xlsx)", type=["xlsx"], accept_multiple_files=False)
-    process = st.button("Generate Word Documents")
+    uploaded = st.file_uploader("Upload Excel (.xlsx)", type=["xlsx"], accept_multiple_files=False)
+    process = st.button("Genereer Wordbestandjes")
     status = st.empty()
 
     if process:
