@@ -8,6 +8,7 @@ import zipfile
 import re
 from datetime import date
 
+pip install pandas python-docx openpyxl
 # Note: pandas and python-docx are imported later inside the Forms branch to avoid hard failure
 # if they are not installed and the user doesn't use that feature.
 
