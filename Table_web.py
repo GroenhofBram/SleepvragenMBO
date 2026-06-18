@@ -480,27 +480,58 @@ elif mode == "Forms Feedbacktool":
     # new robust ensure_table_grid that doesn't rely on get_or_add_tblPr
     def ensure_table_grid(table):
         tbl = table._tbl  # lxml element
-        tblPr = tbl.find(qn("w:tblPr"))
+        # find or create tblPr
+        tblPr = None
+        for child in tbl:
+            if child.tag == qn("w:tblPr"):
+                tblPr = child
+                break
         if tblPr is None:
             tblPr = OxmlElement("w:tblPr")
-            # insert as first child
             tbl.insert(0, tblPr)
-        # remove existing borders if present
-        existing = tblPr.find(qn("w:tblBorders"))
+        # remove existing tblBorders if present
+        existing = None
+        for child in tblPr:
+            if child.tag == qn("w:tblBorders"):
+                existing = child
+                break
         if existing is not None:
             tblPr.remove(existing)
         borders = OxmlElement("w:tblBorders")
         for border_name in ("top", "left", "bottom", "right", "insideH", "insideV"):
             node = OxmlElement(f"w:{border_name}")
             node.set(qn("w:val"), "single")
-            node.set(qn("w:sz"), "4")       # thickness
+            node.set(qn("w:sz"), "4")
             node.set(qn("w:space"), "0")
             node.set(qn("w:color"), "000000")
             borders.append(node)
         tblPr.append(borders)
 
+    # Helper: format a paragraph so there is no extra spacing between lines / before/after
+    def format_para_no_spacing(para, font_family, font_size_pt, bold=False):
+        # paragraph spacing
+        pf = para.paragraph_format
+        try:
+            pf.space_before = Pt(0)
+            pf.space_after = Pt(0)
+            pf.line_spacing = 1.0
+        except Exception:
+            pass
+        # ensure text and run formatting
+        text = para.text or ""
+        para.text = ""
+        run = para.add_run(text)
+        run.font.size = Pt(font_size_pt)
+        run.font.bold = bold
+        try:
+            run.font.name = font_family
+            run._element.rPr.rFonts.set(qn("w:eastAsia"), font_family)
+        except Exception:
+            pass
+        return run
+
     st.header("Forms Feedbacktool — Word export")
-    st.write("Upload een Excel (.xlsx). Kies alleen lettertype en lettergrootte. Word-bestanden krijgen gridlines; kop en datum zijn vetgedrukt.")
+    st.write("Upload een Excel (.xlsx). Kies alleen lettertype en lettergrootte. Word-bestanden krijgen gridlines; kop en datum zijn vetgedrukt. Er is geen preview in de app.")
 
     # minimal user input
     font_family = st.selectbox("Lettertype voor Word", ["Calibri", "Times New Roman", "Arial"], index=0)
@@ -535,7 +566,7 @@ elif mode == "Forms Feedbacktool":
                             simple_name = extract_column_name(str(cg_col))
                             current_df.columns = ["VC lid", simple_name]
 
-                            # Heading (bold) and date (bold)
+                            # Heading (bold)
                             p_head = doc.add_paragraph()
                             run_h = p_head.add_run(str(cg_col))
                             run_h.font.bold = True
@@ -546,6 +577,7 @@ elif mode == "Forms Feedbacktool":
                             except Exception:
                                 pass
 
+                            # Date (bold)
                             p_date = doc.add_paragraph()
                             run_d = p_date.add_run(f"VC {today_str}")
                             run_d.font.bold = True
@@ -560,44 +592,24 @@ elif mode == "Forms Feedbacktool":
                             table = doc.add_table(rows=1, cols=2)
                             ensure_table_grid(table)
 
-                            # Header texts and formatting
+                            # Header texts and formatting (no extra spacing)
                             hdr_texts = ["VC lid", simple_name]
                             hdr_cells = table.rows[0].cells
                             for i, cell in enumerate(hdr_cells):
                                 para = cell.paragraphs[0]
-                                para.text = ""
-                                run = para.add_run(hdr_texts[i])
-                                run.font.bold = True
-                                run.font.size = Pt(font_size_pt)
-                                try:
-                                    run.font.name = font_family
-                                    run._element.rPr.rFonts.set(qn("w:eastAsia"), font_family)
-                                except Exception:
-                                    pass
+                                para.text = hdr_texts[i]
+                                # apply no-spacing & bold formatting
+                                format_para_no_spacing(para, font_family, font_size_pt, bold=True)
 
-                            # Fill rows
+                            # Fill rows; ensure no extra spacing in each cell paragraph
                             for _, row in current_df.iterrows():
                                 r_cells = table.add_row().cells
-                                # left
                                 left_para = r_cells[0].paragraphs[0]
-                                left_para.text = ""
-                                left_run = left_para.add_run(str(row["VC lid"]))
-                                left_run.font.size = Pt(font_size_pt)
-                                try:
-                                    left_run.font.name = font_family
-                                    left_run._element.rPr.rFonts.set(qn("w:eastAsia"), font_family)
-                                except Exception:
-                                    pass
-                                # right
+                                left_para.text = str(row["VC lid"])
+                                format_para_no_spacing(left_para, font_family, font_size_pt, bold=False)
                                 right_para = r_cells[1].paragraphs[0]
-                                right_para.text = ""
-                                right_run = right_para.add_run(str(row[simple_name]))
-                                right_run.font.size = Pt(font_size_pt)
-                                try:
-                                    right_run.font.name = font_family
-                                    right_run._element.rPr.rFonts.set(qn("w:eastAsia"), font_family)
-                                except Exception:
-                                    pass
+                                right_para.text = str(row[simple_name])
+                                format_para_no_spacing(right_para, font_family, font_size_pt, bold=False)
 
                             doc.add_page_break()
 
