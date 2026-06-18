@@ -718,4 +718,4 @@ elif mode == "Forms Feedbacktool":
                         # select columns that begin with this prefix
                         cols_for_prefix = [c for c in cg_columns if str(c).startswith(prefix)]
                         for cg_col in cols_for_prefix:
-                status.error(f"Fout bij verwerken: {e}")
+                            status.error(f"Fout bij verwerken: {e}")
