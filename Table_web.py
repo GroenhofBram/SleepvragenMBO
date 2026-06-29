@@ -955,20 +955,4 @@ elif mode == "Forms Feedbacktool":
             zip_name = f"FB_Gebundeld_{zip_date}.zip"
             st.download_button(label="Download alle gebundelde documenten (.zip)", data=zip_buf.getvalue(), file_name=safe_filename(zip_name) or zip_name, mime="application/zip", key="merge_zip_dl")
 
-        # Also show earlier generated files from prior runs in this session (same rendering)
-        if st.session_state.get("merge_generated") and not st.session_state.get("merge_ready"):
-            # this case: files exist but merge_ready False (shouldn't normally happen) — still show them
-            st.markdown("### Eerder aangemaakte gebundelde documenten in deze sessie")
-            for item in st.session_state["merge_generated"]:
-                fname = item.get("fname")
-                data = item.get("data")
-                if not fname or not data:
-                    continue
-                dl_key = f"merge_prev_dl_{safe_filename(fname)}"
-                st.download_button(
-                    label=fname,
-                    data=data,
-                    file_name=safe_filename(fname) or fname,
-                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                    key=dl_key
-                )
+       
