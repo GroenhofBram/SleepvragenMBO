@@ -223,7 +223,7 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
-st.info("Laatste Update: 2026-05-27 - Grootte van sleepopties bij 1 regel gefixt")
+st.info("Laatste Update: 2026-06-29 - Feedbacktool toegevoegd")
 manual_filename = "Nieuwe Itemtypes Handleiding Invoer TOM.docx"
 base_dir = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
 manual_path = os.path.join(base_dir, manual_filename)
@@ -243,7 +243,7 @@ except Exception as e:
     st.error(f"Kon handleiding niet laden: {e}")
 
 st.caption("Links vul je informatie in, rechts zie je de plaatjes.")
-mode = st.selectbox("Kies functie:", ["Tabel Maken", "Sleepopties Maken", "Forms Feedbacktool"], index=0)
+mode = st.selectbox("Kies functie:", ["Tabel Maken", "Sleepopties Maken", "Feedbacktool"], index=0)
 left, right = st.columns([1, 1.2])
 
 # ----------------- TABEL MAKEN (full functionality) -----------------
@@ -423,8 +423,8 @@ elif mode == "Sleepopties Maken":
                 zip_name = prefix + f"{safe_filename(tekst_titel)}_{tekst_itemnummer}_alle_sleepopties.zip"
                 st.download_button(label="Download alle plaatjes in 1 keer (.zip)", data=zip_buffer.getvalue(), file_name=safe_filename(zip_name) or "sleepopties.zip", mime="application/zip", key="download_all_zip")
 
-# ----------------- FORMS FEEDBACKTOOL (REDESIGNED) -----------------
-elif mode == "Forms Feedbacktool":
+# ----------------- Feedbacktool (REDESIGNED) -----------------
+elif mode == "Feedbacktool":
     # We need python-docx
     try:
         from docx import Document
@@ -502,7 +502,7 @@ elif mode == "Forms Feedbacktool":
         h = re.sub(r"\s+", " ", h)
         return h.lower()
 
-    st.header("Forms Feedbacktool — nieuw ontwerp")
+    st.header("Feedbacktool")
     st.write("Deze tool heeft twee secties: 'Feedbackformulieren genereren' en 'Feedbackformulieren samenvoegen'.")
     tab = st.radio("Kies sectie:", ("Feedbackformulieren genereren", "Feedbackformulieren samenvoegen"))
 
@@ -516,8 +516,8 @@ elif mode == "Forms Feedbacktool":
 
     # ---------------- Section 1: generate (Times New Roman default) ----------------
     if tab == "Feedbackformulieren genereren":
-        st.subheader("1) Feedbackformulieren genereren")
-        st.write("Geef hieronder op voor welke teksten je feedbackformulieren wilt aanmaken en welke onderdelen per tekst feedback moeten krijgen.")
+        st.subheader("1: Feedbackformulieren genereren")
+        st.write("Hieronder kun je aangeven waarop je feedback wil, voor welke VC het is, en welke VC-leden feedback moeten geven. Als de VC-leden hun feedback hebben ingevuld, kun je naar 'Feedbackformulieren samenvoegen' gaan om de FB samen te voegen.")
 
         # Top-level inputs
         num_texts = st.number_input("Hoeveel teksten wil je invoeren?", min_value=1, max_value=50, value=1, step=1, key="ff_num_texts")
@@ -544,7 +544,7 @@ elif mode == "Forms Feedbacktool":
                     st.markdown("Kies of je feedback wilt op:")
                     it1 = st.checkbox("Algemene opmerkingen", key=f"ff_items_alg_{i}")
                     it2 = st.checkbox("Titel", key=f"ff_items_titel_{i}")
-                    items_count = st.number_input("Over hoeveel items wil je feedback krijgen?", min_value=0, value=0, step=1, key=f"ff_items_count_{i}")
+                    items_count = st.number_input("Hoeveel items bij deze tekst?", min_value=0, value=0, step=1, key=f"ff_items_count_{i}")
                     if it1:
                         feedback_points.append("Algemene opmerkingen")
                     if it2:
@@ -553,7 +553,7 @@ elif mode == "Forms Feedbacktool":
                         feedback_points.append(f"Item {itn+1}")
 
                 elif soort == "Bezem":
-                    st.markdown("Bezem: kies of je algemene opmerkingen wilt en vink welke bezems het betreft (1 t/m 20):")
+                    st.markdown("Bezem: kies of je algemene opmerkingen wilt en vink welke bezem(s) het betreft:")
                     bz1 = st.checkbox("Algemene opmerkingen", key=f"ff_bezem_alg_{i}")
                     bezem_choices = [str(n) for n in range(1, 21)]
                     bezems_selected = st.multiselect("Welke bezems?", options=bezem_choices, key=f"ff_bezem_select_{i}")
@@ -563,7 +563,7 @@ elif mode == "Forms Feedbacktool":
                         feedback_points.append(f"Bezem {b}")
 
                 elif soort == "Anders":
-                    st.markdown("Voer zelf op waar je feedback op wilt. Eén regel = één feedbackpunt.")
+                    st.markdown("Voer zelf in waar je feedback op wilt.")
                     anders_raw = st.text_area("Vul hier de namen van de feedbackpunten (één per regel)", key=f"ff_anders_{i}", height=120)
                     if anders_raw and anders_raw.strip():
                         for ln in anders_raw.splitlines():
@@ -600,7 +600,7 @@ elif mode == "Forms Feedbacktool":
             for t in texts:
                 total_points += len(t["feedback_points"])
             if total_points == 0:
-                status.error("Er zijn geen feedbackpunten opgegeven. Vul voor minstens één tekst aan waarop feedback moet komen.")
+                status.error("Geef minstens één tekst (items, CL, bezems) waarop feedback moet komen.")
             else:
                 generated = []
                 today_str = vc_date.isoformat()
@@ -670,12 +670,12 @@ elif mode == "Forms Feedbacktool":
                 # store persistent
                 st.session_state["ff_generated"] = generated
                 if not generated:
-                    status.warning("Er zijn geen documenten gegenereerd (mogelijk namen van VC-leden leeg).")
+                    status.warning("Er zijn geen documenten gegenereerd (mogelijk namen van VC-leden leeg?).")
                 else:
-                    status.success(f"✅ {len(generated)} document(en) gegenereerd en klaargezet voor download.")
+                    status.success(f"✅ {len(generated)} document(en) staan klaar.")
 
         if st.session_state.get("ff_generated"):
-            st.markdown("### Beschikbare gegenereerde documenten")
+            st.markdown("### Gegenereerde documenten")
             for idx, item in enumerate(st.session_state["ff_generated"], start=1):
                 fname = item.get("fname")
                 data_bytes = item.get("data")
@@ -704,11 +704,11 @@ elif mode == "Forms Feedbacktool":
 
     # ---------------- Section 2: merging uploaded docx (per-table bundling) ----------------
     else:
-        st.subheader("2) Feedbackformulieren samenvoegen")
-        st.write("Upload 2 of meer .docx bestanden. Tabellen met dezelfde kop (de alinea vóór 'FB voor VC ...') worden per tabel gebundeld en in één document per CG samengevoegd, in originele volgorde.")
+        st.subheader("2: Feedbackformulieren samenvoegen")
+        st.write("Upload 2 of meer .docx bestanden. Alle tabellen worden gebundeld en in één document per CG gegeven.")
 
-        uploaded = st.file_uploader("Upload .docx bestanden (meerdere mogelijk)", type=["docx"], accept_multiple_files=True)
-        merge_btn = st.button("Start samenvoegen")
+        uploaded = st.file_uploader("Upload de .docx FB bestanden van de VC-leden", type=["docx"], accept_multiple_files=True)
+        merge_btn = st.button("Bundel FB")
 
         # helper: parse a document into ordered list of table entries
         def parse_doc_tables(doc):
@@ -837,7 +837,7 @@ elif mode == "Forms Feedbacktool":
                                         if candidate not in used_in_this_doc:
                                             key = candidate
                             if key is None:
-                                status.warning(f"Kon kop niet matchen: '{e['heading']}' in document #{doc_idx}. Deze tabel wordt overgeslagen.")
+                                status.warning(f"Kon kop niet matchen: '{e['heading']}' in document #{doc_idx}. Deze tabel wordt overgeslagen (dit komt dus niet in alle documenten voor, dat zou niet moeten gebeuren).")
                                 continue
                             used_in_this_doc.add(key)
                             canon_map[key]["rows"].extend(e.get("rows", []))
@@ -847,13 +847,13 @@ elif mode == "Forms Feedbacktool":
                     # Determine date for output
                     unique_dates = sorted(set(dates_found))
                     if len(unique_dates) == 0:
-                        st.warning("Geen datums gevonden in de geüploade documenten. Kies handmatig de datum voor de gebundelde bestanden.")
+                        st.warning("Geen datums gevonden in de geüploade documenten. Kies handmatig de datum voor de gebundelde bestanden. Dit is vaak een teken dat er iets mis is met de bestanden")
                         chosen_date = st.date_input("Datum voor gebundelde bestanden", value=date.today())
                         chosen_date = chosen_date.isoformat()
                     elif len(unique_dates) == 1:
                         chosen_date = unique_dates[0]
                     else:
-                        chosen_date = st.selectbox("Meerdere datums gevonden. Kies de datum voor de bestandsnamen:", options=unique_dates, index=0)
+                        chosen_date = st.selectbox("Meerdere data gevonden in bestanden. Kies de datum voor de bestandsnamen:", options=unique_dates, index=0)
 
                     # Group per CG and create documents; each heading becomes its own table
                     grouped = {}
@@ -915,24 +915,24 @@ elif mode == "Forms Feedbacktool":
                             except Exception as e:
                                 st.error(f"Fout bij opslaan {cg_prefix}: {e}")
 
-                    # Persist generation as replacement so it survives reruns and downloads
+
                     st.session_state["merge_generated"] = generated
                     st.session_state["merge_ready"] = True
 
                     if not st.session_state["merge_generated"]:
-                        st.warning("Er zijn geen gebundelde documenten gemaakt (mogelijk geen matchende tabellen).")
+                        st.warning("Er zijn geen gebundelde documenten gemaakt (komen de tabellen in Word overeen?).")
                     else:
-                        st.success(f"✅ {len(st.session_state['merge_generated'])} gebundelde document(en) aangemaakt.")
+                        st.success(f"✅ {len(st.session_state['merge_generated'])} gebundelde FB-document(en) aangemaakt.")
 
         # Render download buttons persistently if merge_ready
         if st.session_state.get("merge_ready") and st.session_state.get("merge_generated"):
-            st.markdown("### Beschikbare gebundelde documenten (sessie)")
+            st.markdown("### Gebundelde FB-documenten")
             for item in st.session_state["merge_generated"]:
                 fname = item.get("fname")
                 data = item.get("data")
                 if not fname or not data:
                     continue
-                # stable key per filename ensures button remains stable across reruns
+                
                 dl_key = f"merge_dl_{safe_filename(fname)}"
                 st.download_button(
                     label=fname,
@@ -947,7 +947,7 @@ elif mode == "Forms Feedbacktool":
                 for item in st.session_state["merge_generated"]:
                     z.writestr(safe_filename(item["fname"]) or item["fname"], item["data"])
             zip_buf.seek(0)
-            # try to infer chosen_date, fallback to today
+
             try:
                 zip_date = chosen_date
             except Exception:
