@@ -316,7 +316,7 @@ if mode == "Tabel Maken":
                 row2_height = int(longest_rows * 20 * answers_per_box)
                 row_heights = [row1_height, row2_height]
         table = TableImage(rows=rows, cols=cols, row_height=row_heights, col_width=col_width, font_size=11, line_width=1, wrap_width=max_chars_per_line)
-        st.subheader("Vul het benodigde tekst per cel van de tabel in")
+        st.subheader("Vul de benodigde tekst per cel van de tabel in")
         if table_type.startswith("Type 2"):
             bold_choice = st.checkbox("Vink dit aan als de tekst dikgedrukt moet zijn", key="table_bold_all")
         else:
@@ -494,17 +494,25 @@ elif mode == "Forms Feedbacktool":
             elif tag.endswith("}tbl"):
                 yield ("tbl", Table(child, doc))
 
+    # Normalize heading for matching across docs (ignore case + collapse whitespace)
+    def normalize_heading(h: str) -> str:
+        if h is None:
+            return ""
+        h = str(h).strip()
+        h = re.sub(r"\s+", " ", h)
+        return h.lower()
+
     st.header("Forms Feedbacktool — nieuw ontwerp")
     st.write("Deze tool heeft twee secties: 'Feedbackformulieren genereren' en 'Feedbackformulieren samenvoegen'.")
     tab = st.radio("Kies sectie:", ("Feedbackformulieren genereren", "Feedbackformulieren samenvoegen"))
 
-    # Ensure persistent storage for generated files so download buttons persist
+    # Persistent storage for generated files so download buttons persist
     if "ff_generated" not in st.session_state:
         st.session_state["ff_generated"] = []
     if "merge_generated" not in st.session_state:
         st.session_state["merge_generated"] = []
 
-    # ---------------- Section 1: generate (default font Times New Roman) ----------------
+    # ---------------- Section 1: generate (Times New Roman default) ----------------
     if tab == "Feedbackformulieren genereren":
         st.subheader("1) Feedbackformulieren genereren")
         st.write("Geef hieronder op voor welke teksten je feedbackformulieren wilt aanmaken en welke onderdelen per tekst feedback moeten krijgen.")
@@ -654,17 +662,17 @@ elif mode == "Forms Feedbacktool":
                     try:
                         doc.save(bio)
                         bio.seek(0)
-                        generated.append({"fname": fname, "data": bio.read()})
+                        st.session_state["ff_generated"].append({"fname": fname, "data": bio.read()})
                     except Exception as e:
                         status.error(f"Fout bij opslaan document voor {vc_name}: {e}")
-                st.session_state["ff_generated"] = generated
-                if not generated:
+                if not st.session_state["ff_generated"]:
                     status.warning("Er zijn geen documenten gegenereerd (mogelijk namen van VC-leden leeg).")
                 else:
-                    status.success(f"✅ {len(generated)} document(en) gegenereerd en klaargezet voor download.")
+                    status.success(f"✅ {len(st.session_state['ff_generated'])} document(en) gegenereerd en klaargezet voor download.")
 
         if st.session_state.get("ff_generated"):
             st.markdown("### Beschikbare gegenereerde documenten")
+            # Show persistent download buttons (do not disappear after click)
             for idx, item in enumerate(st.session_state["ff_generated"], start=1):
                 fname = item.get("fname")
                 data_bytes = item.get("data")
@@ -677,38 +685,52 @@ elif mode == "Forms Feedbacktool":
                     mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                     key=f"ff_dl_{idx}"
                 )
+            # ZIP
             zip_buf = io.BytesIO()
             with zipfile.ZipFile(zip_buf, "w", compression=zipfile.ZIP_DEFLATED) as z:
                 for item in st.session_state["ff_generated"]:
                     z.writestr(safe_filename(item["fname"]) or item["fname"], item["data"])
             zip_buf.seek(0)
-            zip_name = f"FB_Gebundeld_{vc_date.isoformat()}.zip"
+            # Use latest chosen date if available, else today
+            try:
+                chosen_date_for_zip = st.session_state.get("ff_vc_date", date.today()).isoformat()
+            except Exception:
+                chosen_date_for_zip = date.today().isoformat()
+            zip_name = f"FB_Gebundeld_{chosen_date_for_zip}.zip"
             st.download_button(label="Download alle documenten als ZIP", data=zip_buf.getvalue(), file_name=safe_filename(zip_name) or zip_name, mime="application/zip", key="ff_dl_zip")
 
-    # ---------------- Section 2: merging uploaded docx (per-table bundling) ----------------
+    # ---------------- Section 2: merging uploaded docx (per-table bundling, correct heading detection) ----------------
     else:
         st.subheader("2) Feedbackformulieren samenvoegen")
-        st.write("Upload 2 of meer .docx bestanden. Tabellen met dezelfde koptekst (exact dezelfde kop-paragraaf) worden per tabel gebundeld. Er wordt per CG één bestand gemaakt waarin alle afzonderlijke gebundelde tabellen (in originele volgorde) staan.")
+        st.write("Upload 2 of meer .docx bestanden. Tabellen met dezelfde kop (de alinea vóór 'FB voor VC ...') worden per tabel gebundeld en in één document per CG samengevoegd, in originele volgorde.")
 
         uploaded = st.file_uploader("Upload .docx bestanden (meerdere mogelijk)", type=["docx"], accept_multiple_files=True)
         merge_btn = st.button("Start samenvoegen")
 
-        if uploaded and len(uploaded) < 2:
-            st.warning("Upload minimaal 2 bestanden om samen te voegen.")
-
-        # helper: parse a document into a list of table entries in order
+        # helper: parse a document into ordered list of table entries
         def parse_doc_tables(doc):
             entries = []
-            last_para_text = ""
-            last_date = None
+            last_heading_para = ""  # echte kopregel voor de tabel
+            last_date_iso = None
             for block_type, block in iter_block_items(doc):
                 if block_type == "p":
-                    txt = block.text.strip() if block.text else ""
-                    if txt:
-                        last_para_text = txt
-                        m = re.search(r"(\d{4}-\d{2}-\d{2})", txt)
-                        if m:
-                            last_date = m.group(1)
+                    txt = (block.text or "").strip()
+                    if not txt:
+                        continue
+                    # Detect date paragraphs like 'FB voor VC YYYY-MM-DD'
+                    m_full = re.search(r"fb\s*voor\s*vc\s*(\d{4}-\d{2}-\d{2})", txt, flags=re.IGNORECASE)
+                    m_iso = re.search(r"(\d{4}-\d{2}-\d{2})", txt)
+                    if m_full:
+                        last_date_iso = m_full.group(1)
+                        # IMPORTANT: do NOT override heading with the date line
+                        continue
+                    elif m_iso and txt.lower().startswith("fb"):
+                        # Another variant starting with FB ... capture date too
+                        last_date_iso = m_iso.group(1)
+                        continue
+                    else:
+                        # Treat as a heading paragraph (non-date)
+                        last_heading_para = txt
                 elif block_type == "tbl":
                     table = block
                     if not table.rows:
@@ -717,19 +739,21 @@ elif mode == "Forms Feedbacktool":
                     data_rows = []
                     for row in table.rows[1:]:
                         row_texts = [cell.text.strip() for cell in row.cells]
-                        # keep empty rows too? We'll skip fully empty rows
                         if any(cell != "" for cell in row_texts):
                             data_rows.append(row_texts)
-                    heading_text = last_para_text or "Onbekende kop"
+                    # Use the last non-date paragraph as the heading
+                    heading_text = last_heading_para or "Onbekende kop"
                     entries.append({
                         "heading": heading_text,
-                        "date": last_date,
+                        "date": last_date_iso,
                         "header": hdr_cells,
                         "rows": data_rows
                     })
-                    # reset last_para_text so a following table without a new heading doesn't reuse the same heading
-                    last_para_text = ""
+                    # After a table, do not reset heading; next table may have its own preceding heading
             return entries
+
+        if uploaded and len(uploaded) < 2:
+            st.warning("Upload minimaal 2 bestanden om samen te voegen.")
 
         if merge_btn:
             if not uploaded or len(uploaded) < 2:
@@ -737,102 +761,107 @@ elif mode == "Forms Feedbacktool":
             else:
                 status = st.empty()
                 all_docs_entries = []
-                filenames = []
                 dates_found = []
+                filenames = [getattr(f, "name", "uploaded.docx") for f in uploaded]
 
-                # Parse all uploaded documents
+                # Parse
                 for f in uploaded:
-                    fname = getattr(f, "name", "uploaded.docx")
-                    filenames.append(fname)
                     try:
                         doc = Document(f)
                     except Exception as e:
-                        status.error(f"Kon bestand niet openen: {fname}: {e}")
-                        doc = None
-                    if doc is None:
+                        status.error(f"Kon bestand niet openen: {getattr(f,'name','(naamloos)')}: {e}")
                         continue
                     entries = parse_doc_tables(doc)
                     all_docs_entries.append(entries)
                     for e in entries:
                         if e.get("date"):
-                            dates_found.append(e.get("date"))
+                            dates_found.append(e["date"])
 
-                if not all_docs_entries or sum(len(e) for e in all_docs_entries) == 0:
-                    st.warning("Geen tabellen gevonden in de geüploade bestanden.")
+                if not all_docs_entries or sum(len(es) for es in all_docs_entries) == 0:
+                    st.warning("Geen tabellen gevonden in de geüploade documenten.")
                 else:
-                    # Use the first document's headings as master order
                     master_entries = all_docs_entries[0]
-                    master_headings = [e["heading"] for e in master_entries]
+                    if not master_entries:
+                        st.error("Het eerste document bevat geen tabellen; kan niet als referentie dienen.")
+                        st.stop()
 
-                    # Build mapping: heading -> combined info (header from first occurrence, combined rows preserving file order)
-                    combined = {}  # heading -> {"header": [...], "rows": [..], "cg": "CGx", "order": n}
+                    # Build canonical mapping from first document by normalized heading
+                    canonical_order = []
+                    canon_map = {}  # norm_heading -> {"orig": heading, "header": header, "rows": [] , "cg": cg, "order": n}
                     order_counter = 0
-                    for idx, head in enumerate(master_headings):
+                    for e in master_entries:
+                        h = e["heading"]
+                        norm = normalize_heading(h)
+                        if norm in canon_map:
+                            # If duplicate headings in first doc, append a numeric suffix to norm to disambiguate
+                            suffix = 2
+                            new_norm = f"{norm}#{suffix}"
+                            while new_norm in canon_map:
+                                suffix += 1
+                                new_norm = f"{norm}#{suffix}"
+                            norm = new_norm
                         order_counter += 1
-                        # find header in first doc
-                        header = master_entries[idx]["header"] if idx < len(master_entries) else ["VC lid", "Opmerking"]
-                        combined[head] = {
-                            "header": header,
-                            "rows": [],
-                            "cg": None,
+                        # detect CG/nummer prefix (CG1, CG 1, of alleen 1)
+                        m = re.match(r"^(CG\s*\d+|\d+)\b", h, flags=re.IGNORECASE)
+                        if m:
+                            cg_prefix = m.group(0).replace(" ", "")
+                            cg_prefix = cg_prefix.upper()
+                        else:
+                            cg_prefix = "UNGROUPED"
+                        canon_map[norm] = {
+                            "orig": h,
+                            "header": e.get("header", ["VC lid", "Opmerking"]),
+                            "rows": list(e.get("rows", [])),
+                            "cg": cg_prefix,
                             "order": order_counter,
                         }
-                        # derive cg prefix from heading
-                        m = re.match(r"^(CG\d+|CG\s*\d+|(\d+)\b)", head, flags=re.IGNORECASE)
-                        if m:
-                            cg_raw = m.group(1)
-                            if cg_raw:
-                                cg_prefix = cg_raw.replace(" ", "")
-                                combined[head]["cg"] = cg_prefix.upper()
-                            else:
-                                combined[head]["cg"] = "UNGROUPED"
-                        else:
-                            combined[head]["cg"] = "UNGROUPED"
+                        canonical_order.append(norm)
 
-                    # For each document, walk its entries in order and append rows to the appropriate combined heading.
-                    # If headings differ across docs, we match by position as fallback.
-                    for doc_entries in all_docs_entries:
-                        # If number of tables equals master count, we can match by position safely.
-                        if len(doc_entries) == len(master_headings):
-                            for pos, e in enumerate(doc_entries):
-                                head = master_headings[pos]
-                                # ensure header alignment: prefer header from master, but if master header is shorter, keep it.
-                                # append rows
-                                combined[head]["rows"].extend(e.get("rows", []))
-                        else:
-                            # try to match by exact heading text
-                            for e in doc_entries:
-                                h = e["heading"]
-                                if h in combined:
-                                    combined[h]["rows"].extend(e.get("rows", []))
-                                else:
-                                    # Not found: try fuzzy match by removing CG prefix or punctuation
-                                    normalized = re.sub(r"\s+", " ", re.sub(r"[^\w\s]", "", h)).strip().lower()
-                                    matched = None
-                                    for ch in combined.keys():
-                                        norm_ch = re.sub(r"\s+", " ", re.sub(r"[^\w\s]", "", ch)).strip().lower()
-                                        if norm_ch == normalized:
-                                            matched = ch
-                                            break
-                                    if matched:
-                                        combined[matched]["rows"].extend(e.get("rows", []))
-                                    else:
-                                        # last resort: append this as a new heading at the end
-                                        order_counter += 1
-                                        new_cg = "UNGROUPED"
-                                        m = re.match(r"^(CG\d+|CG\s*\d+|(\d+)\b)", h, flags=re.IGNORECASE)
-                                        if m:
-                                            cg_raw = m.group(1)
-                                            if cg_raw:
-                                                new_cg = cg_raw.replace(" ", "").upper()
-                                        combined[h] = {
-                                            "header": e.get("header", ["VC lid", "Opmerking"]),
-                                            "rows": list(e.get("rows", [])),
-                                            "cg": new_cg,
-                                            "order": order_counter,
-                                        }
+                    # Function to find a matching canonical key for a heading in another doc
+                    def match_canonical(norm_heading, used_set):
+                        # exact first
+                        if norm_heading in canon_map and norm_heading not in used_set:
+                            return norm_heading
+                        # try without suffix if master had suffixes
+                        base = norm_heading.split("#")[0]
+                        candidates = [k for k in canonical_order if k.split("#")[0] == base and k not in used_set]
+                        if candidates:
+                            return candidates[0]
+                        return None
 
-                    # Determine chosen date for filenames / header
+                    # Merge rows from the remaining documents by heading text (normalized)
+                    for doc_idx, entries in enumerate(all_docs_entries[1:], start=2):
+                        used_in_this_doc = set()
+                        # Build a map of normalized heading counts to help matching duplicates
+                        norm_counts = {}
+                        for e in entries:
+                            n = normalize_heading(e["heading"])
+                            norm_counts[n] = norm_counts.get(n, 0) + 1
+                        # Iterate entries in order; try to match to canonical keys
+                        for e in entries:
+                            n = normalize_heading(e["heading"])
+                            # Try direct match
+                            key = match_canonical(n, used_in_this_doc)
+                            if key is None:
+                                # If master and current doc have same number of tables, try position-based fallback ONLY for not yet matched positions
+                                if len(entries) == len(canonical_order):
+                                    # find first canonical key not used yet at same index
+                                    pos = entries.index(e)
+                                    if 0 <= pos < len(canonical_order):
+                                        candidate = canonical_order[pos]
+                                        if candidate not in used_in_this_doc:
+                                            key = candidate
+                                # If still none, report mismatch and skip
+                            if key is None:
+                                status.warning(f"Kon kop niet matchen: '{e['heading']}' in document #{doc_idx}. Deze tabel wordt overgeslagen.")
+                                continue
+                            used_in_this_doc.add(key)
+                            canon_map[key]["rows"].extend(e.get("rows", []))
+                            # capture dates
+                            if e.get("date"):
+                                dates_found.append(e["date"])
+
+                    # Determine date for output
                     unique_dates = sorted(set(dates_found))
                     if len(unique_dates) == 0:
                         st.warning("Geen datums gevonden in de geüploade documenten. Kies handmatig de datum voor de gebundelde bestanden.")
@@ -841,24 +870,24 @@ elif mode == "Forms Feedbacktool":
                     elif len(unique_dates) == 1:
                         chosen_date = unique_dates[0]
                     else:
-                        chosen_date = st.selectbox("Meerdere datums gevonden in bestanden. Kies welke datum te gebruiken in de bestandsnamen:", options=unique_dates, index=0)
+                        chosen_date = st.selectbox("Meerdere datums gevonden. Kies de datum voor de bestandsnamen:", options=unique_dates, index=0)
 
-                    # Group headings by CG prefix and create per-CG documents
-                    # First collect headings per CG in order
-                    cg_to_headings = {}
-                    for heading, info in sorted(combined.items(), key=lambda kv: kv[1]["order"]):
-                        cg = info.get("cg", "UNGROUPED") or "UNGROUPED"
-                        cg_to_headings.setdefault(cg, []).append((heading, info))
+                    # Group per CG and create documents; each heading becomes its own table (no samenvoegen tot één tabel)
+                    grouped = {}
+                    for key in sorted(canon_map.keys(), key=lambda k: canon_map[k]["order"]):
+                        info = canon_map[key]
+                        cg = info["cg"] or "UNGROUPED"
+                        grouped.setdefault(cg, []).append(info)
 
                     generated = []
-                    for cg_prefix, heading_infos in cg_to_headings.items():
+                    for cg_prefix, infos in grouped.items():
                         doc = Document()
                         wrote_any = False
-                        for heading, info in heading_infos:
-                            rows = info.get("rows", [])
+                        for info in infos:
+                            heading = info["orig"]
                             header_cells = info.get("header", ["VC lid", "Opmerking"])
-                            # Only create a table if there are rows (but still create empty table to match expectations?)
-                            # We'll create the table even if rows empty, to keep structure.
+                            rows = info.get("rows", [])
+                            # Heading (fix: correct heading above, not the date line)
                             p_head = doc.add_paragraph()
                             run_h = p_head.add_run(heading)
                             run_h.font.bold = True
@@ -868,6 +897,7 @@ elif mode == "Forms Feedbacktool":
                                 run_h._element.rPr.rFonts.set(qn("w:eastAsia"), "Times New Roman")
                             except Exception:
                                 pass
+                            # Bundled date line
                             p_date = doc.add_paragraph()
                             run_d = p_date.add_run(f"Gebundelde FB voor VC {chosen_date}")
                             run_d.font.bold = True
@@ -877,17 +907,17 @@ elif mode == "Forms Feedbacktool":
                                 run_d._element.rPr.rFonts.set(qn("w:eastAsia"), "Times New Roman")
                             except Exception:
                                 pass
-                            # create table with number of header columns
+                            # Create table with header row
                             cols_count = max(2, len(header_cells))
                             table = doc.add_table(rows=1, cols=cols_count)
                             ensure_table_grid(table)
-                            # header row
+                            # header
                             for ci in range(cols_count):
                                 hdr_text = header_cells[ci] if ci < len(header_cells) else ""
                                 para = table.rows[0].cells[ci].paragraphs[0]
                                 para.text = hdr_text
                                 format_para_no_spacing(para, "Times New Roman", 11, bold=True, text_override=hdr_text)
-                            # data rows
+                            # rows
                             for rdata in rows:
                                 row_cells = table.add_row().cells
                                 for ci in range(cols_count):
@@ -903,15 +933,14 @@ elif mode == "Forms Feedbacktool":
                             try:
                                 doc.save(bio)
                                 bio.seek(0)
-                                generated.append({"fname": fname, "data": bio.read()})
+                                st.session_state["merge_generated"].append({"fname": fname, "data": bio.read()})
                             except Exception as e:
                                 st.error(f"Fout bij opslaan {cg_prefix}: {e}")
 
-                    if not generated:
-                        st.warning("Er zijn geen gebundelde documenten gemaakt (mogelijk waren er geen tables met inhoud).")
+                    if not st.session_state["merge_generated"]:
+                        st.warning("Er zijn geen gebundelde documenten gemaakt (mogelijk geen matchende tabellen).")
                     else:
-                        st.session_state["merge_generated"] = generated
-                        st.success(f"✅ {len(generated)} gebundelde document(en) aangemaakt.")
+                        st.success(f"✅ {len(st.session_state['merge_generated'])} gebundelde document(en) aangemaakt.")
                         for idx, item in enumerate(st.session_state["merge_generated"], start=1):
                             st.download_button(
                                 label=item["fname"],
@@ -920,6 +949,7 @@ elif mode == "Forms Feedbacktool":
                                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                                 key=f"merge_dl_{idx}"
                             )
+                        # ZIP
                         zip_buf = io.BytesIO()
                         with zipfile.ZipFile(zip_buf, "w", compression=zipfile.ZIP_DEFLATED) as z:
                             for item in st.session_state["merge_generated"]:
@@ -928,7 +958,7 @@ elif mode == "Forms Feedbacktool":
                         zip_name = f"FB_Gebundeld_{chosen_date}.zip"
                         st.download_button(label="Download alle gebundelde documenten (.zip)", data=zip_buf.getvalue(), file_name=safe_filename(zip_name) or zip_name, mime="application/zip", key="merge_zip_dl")
 
-        # Show previously generated merged files (persist between clicks)
+        # Show previously generated merged files (persistent within session)
         if st.session_state.get("merge_generated"):
             st.markdown("### Eerder aangemaakte gebundelde documenten in deze sessie")
             for idx, item in enumerate(st.session_state["merge_generated"], start=1):
