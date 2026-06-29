@@ -530,20 +530,13 @@ elif mode == "Forms Feedbacktool":
                         feedback_points.append(f"Item {itn+1}")
 
                 elif soort == "Bezem":
-                    st.markdown("Bezem: kies of je algemene opmerkingen wilt en geef welke bezems (bijv. '2,5'):")
+                    st.markdown("Bezem: kies of je algemene opmerkingen wilt en vink welke bezems het betreft (1 t/m 20):")
                     bz1 = st.checkbox("Algemene opmerkingen", key=f"ff_bezem_alg_{i}")
-                    bezems_raw = st.text_input("Welke bezems? (komma-gescheiden nummers)", key=f"ff_bezem_list_{i}")
+                    bezem_choices = [str(n) for n in range(1, 21)]
+                    bezems_selected = st.multiselect("Welke bezems?", options=bezem_choices, key=f"ff_bezem_select_{i}")
                     if bz1:
                         feedback_points.append("Algemene opmerkingen")
-                    # parse bezems
-                    bezems = []
-                    if bezems_raw and bezems_raw.strip():
-                        parts = re.split(r"[,\s;]+", bezems_raw.strip())
-                        for p in parts:
-                            if p.strip() != "":
-                                # keep as is (so '2' or '2a' allowed), but strip non-printable
-                                bezems.append(p.strip())
-                    for b in bezems:
+                    for b in bezems_selected:
                         feedback_points.append(f"Bezem {b}")
 
                 elif soort == "Anders":
@@ -572,10 +565,15 @@ elif mode == "Forms Feedbacktool":
             vc_names.append(name.strip())
 
         st.markdown("---")
-        font_family = st.selectbox("Lettertype voor Word (word-compatibel)", ["Calibri", "Times New Roman", "Arial"], index=0, key="ff_font")
+        # Default font should be Times New Roman
+        font_family = st.selectbox("Lettertype voor Word (word-compatibel)", ["Times New Roman", "Calibri", "Arial"], index=0, key="ff_font")
         font_size_pt = st.number_input("Lettergrootte (pt) voor Word", min_value=8, max_value=18, value=11, step=1, key="ff_pt")
 
         generate = st.button("Genereer feedbackdocumenten", key="ff_generate")
+
+        # Ensure persistent storage for generated files so download buttons don't disappear after click
+        if "ff_generated" not in st.session_state:
+            st.session_state["ff_generated"] = []
 
         if generate:
             status = st.empty()
@@ -599,21 +597,17 @@ elif mode == "Forms Feedbacktool":
                         titel = t.get("titel", "")
                         fp_list = t.get("feedback_points", [])
                         for fp in fp_list:
-                            # Heading: "CG5 Hoe groen is groen, Nieuwe items. Algemene opmerkingen"
-                            heading_text = ""
+                            # Heading: combine cg and title and the feedback point
+                            heading_text_parts = []
                             if cg:
-                                heading_text += f"{cg} "
+                                heading_text_parts.append(cg)
                             if titel:
-                                heading_text += f"{titel}"
-                            if heading_text and not heading_text.endswith("."):
-                                heading_text = heading_text.strip()
-                            if fp:
-                                if heading_text:
-                                    heading_text = f"{heading_text}. {fp}"
-                                else:
-                                    heading_text = fp
+                                heading_text_parts.append(titel)
+                            heading_main = ", ".join([p for p in heading_text_parts if p])
+                            if heading_main:
+                                heading_text = f"{heading_main}. {fp}" if fp else heading_main
                             else:
-                                heading_text = heading_text or fp or ""
+                                heading_text = fp or ""
                             # Add heading
                             p_head = doc.add_paragraph()
                             run_h = p_head.add_run(heading_text)
@@ -662,24 +656,39 @@ elif mode == "Forms Feedbacktool":
                     try:
                         doc.save(bio)
                         bio.seek(0)
-                        generated.append((fname, bio.read()))
+                        generated.append({"fname": fname, "data": bio.read()})
                     except Exception as e:
                         status.error(f"Fout bij opslaan document voor {vc_name}: {e}")
-
+                # store in session state so download buttons remain after clicking
+                st.session_state["ff_generated"] = generated
                 if not generated:
                     status.warning("Er zijn geen documenten gegenereerd (mogelijk namen van VC-leden leeg).")
                 else:
-                    status.success(f"✅ {len(generated)} document(en) gegenereerd.")
-                    for idx, (fname, data_bytes) in enumerate(generated, start=1):
-                        st.download_button(label=fname, data=data_bytes, file_name=safe_filename(fname) or fname, mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", key=f"ff_dl_{idx}")
-                    # also offer a zip
-                    zip_buf = io.BytesIO()
-                    with zipfile.ZipFile(zip_buf, "w", compression=zipfile.ZIP_DEFLATED) as z:
-                        for fname, data_bytes in generated:
-                            z.writestr(safe_filename(fname) or fname, data_bytes)
-                    zip_buf.seek(0)
-                    zip_name = f"FB_Gebundeld_{vc_date.isoformat()}.zip"
-                    st.download_button(label="Download alle documenten als ZIP", data=zip_buf.getvalue(), file_name=safe_filename(zip_name) or zip_name, mime="application/zip", key="ff_dl_zip")
+                    status.success(f"✅ {len(generated)} document(en) gegenereerd en klaargezet voor download.")
+
+        # Show generated files if present in session_state (so buttons persist after download click)
+        if st.session_state.get("ff_generated"):
+            st.markdown("### Beschikbare gegenereerde documenten")
+            for idx, item in enumerate(st.session_state["ff_generated"], start=1):
+                fname = item.get("fname")
+                data_bytes = item.get("data")
+                if not fname or not data_bytes:
+                    continue
+                st.download_button(
+                    label=fname,
+                    data=data_bytes,
+                    file_name=safe_filename(fname) or fname,
+                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    key=f"ff_dl_{idx}"
+                )
+            # offer ZIP as well
+            zip_buf = io.BytesIO()
+            with zipfile.ZipFile(zip_buf, "w", compression=zipfile.ZIP_DEFLATED) as z:
+                for item in st.session_state["ff_generated"]:
+                    z.writestr(safe_filename(item["fname"]) or item["fname"], item["data"])
+            zip_buf.seek(0)
+            zip_name = f"FB_Gebundeld_{vc_date.isoformat()}.zip"
+            st.download_button(label="Download alle documenten als ZIP", data=zip_buf.getvalue(), file_name=safe_filename(zip_name) or zip_name, mime="application/zip", key="ff_dl_zip")
 
     else:
         # Placeholder for merging tool
