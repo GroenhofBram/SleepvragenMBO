@@ -316,7 +316,7 @@ if mode == "Tabel Maken":
                 row2_height = int(longest_rows * 20 * answers_per_box)
                 row_heights = [row1_height, row2_height]
         table = TableImage(rows=rows, cols=cols, row_height=row_heights, col_width=col_width, font_size=11, line_width=1, wrap_width=max_chars_per_line)
-        st.subheader("Vul de benodigde tekst per cel van de tabel in")
+        st.subheader("Vul het benodigde tekst per cel van de tabel in")
         if table_type.startswith("Type 2"):
             bold_choice = st.checkbox("Vink dit aan als de tekst dikgedrukt moet zijn", key="table_bold_all")
         else:
@@ -431,15 +431,15 @@ elif mode == "Forms Feedbacktool":
         from docx.shared import Pt
         from docx.oxml import OxmlElement
         from docx.oxml.ns import qn
+        from docx.text.paragraph import Paragraph
+        from docx.table import Table
     except Exception:
-        st.error("Deze feature vereist extra package: python-docx. Installeer met: pip install python-docx")
+        st.error("Deze feature vereist package python-docx. Installeer met: pip install python-docx")
         st.stop()
 
     # Helpers for Word formatting & table borders
     def ensure_table_grid(table):
-        # Similar approach to previous implementation but robust
         tbl = table._tbl  # lxml element
-        # find or create tblPr
         tblPr = None
         for child in tbl:
             if child.tag == qn("w:tblPr"):
@@ -448,7 +448,6 @@ elif mode == "Forms Feedbacktool":
         if tblPr is None:
             tblPr = OxmlElement("w:tblPr")
             tbl.insert(0, tblPr)
-        # remove existing tblBorders if present
         existing = None
         for child in tblPr:
             if child.tag == qn("w:tblBorders"):
@@ -467,7 +466,6 @@ elif mode == "Forms Feedbacktool":
         tblPr.append(borders)
 
     def format_para_no_spacing(para, font_family, font_size_pt, bold=False, text_override=None):
-        # Removes extra spacing and sets font on newly created run
         try:
             pf = para.paragraph_format
             pf.space_before = Pt(0)
@@ -487,10 +485,24 @@ elif mode == "Forms Feedbacktool":
             pass
         return run
 
+    # helper to iterate blocks in order (paragraphs and tables)
+    def iter_block_items(doc):
+        for child in doc.element.body:
+            tag = child.tag
+            if tag.endswith("}p"):
+                yield ("p", Paragraph(child, doc))
+            elif tag.endswith("}tbl"):
+                yield ("tbl", Table(child, doc))
+
     st.header("Forms Feedbacktool — nieuw ontwerp")
     st.write("Deze tool heeft twee secties: 'Feedbackformulieren genereren' en 'Feedbackformulieren samenvoegen'.")
     tab = st.radio("Kies sectie:", ("Feedbackformulieren genereren", "Feedbackformulieren samenvoegen"))
 
+    # Ensure persistent storage for generated merge outputs
+    if "merge_generated" not in st.session_state:
+        st.session_state["merge_generated"] = []
+
+    # ---------------- Section 1: generate (unchanged except default font) ----------------
     if tab == "Feedbackformulieren genereren":
         st.subheader("1) Feedbackformulieren genereren")
         st.write("Geef hieronder op voor welke teksten je feedbackformulieren wilt aanmaken en welke onderdelen per tekst feedback moeten krijgen.")
@@ -505,7 +517,6 @@ elif mode == "Forms Feedbacktool":
                 tekst_titel = st.text_input(f"Teksttitel voor tekst #{i+1}", key=f"ff_title_{i}")
                 soort = st.selectbox(f"Soort tekst/items voor tekst #{i+1}", options=["Checklist", "Items", "Bezem", "Anders"], key=f"ff_type_{i}")
 
-                # Initialize feedback points list for this text
                 feedback_points = []
 
                 if soort == "Checklist":
@@ -565,7 +576,7 @@ elif mode == "Forms Feedbacktool":
             vc_names.append(name.strip())
 
         st.markdown("---")
-        # Default font should be Times New Roman
+        # Default font must be Times New Roman
         font_family = st.selectbox("Lettertype voor Word (word-compatibel)", ["Times New Roman", "Calibri", "Arial"], index=0, key="ff_font")
         font_size_pt = st.number_input("Lettergrootte (pt) voor Word", min_value=8, max_value=18, value=11, step=1, key="ff_pt")
 
@@ -577,19 +588,16 @@ elif mode == "Forms Feedbacktool":
 
         if generate:
             status = st.empty()
-            # Validate presence of at least one feedback point across texts
             total_points = 0
             for t in texts:
                 total_points += len(t["feedback_points"])
             if total_points == 0:
                 status.error("Er zijn geen feedbackpunten opgegeven. Vul voor minstens één tekst aan waarop feedback moet komen.")
             else:
-                # Generate one .docx per VC member: each document contains one page per feedback point across all texts.
                 generated = []
                 today_str = vc_date.isoformat()
                 for vc_name in vc_names:
                     if not vc_name or vc_name.strip() == "":
-                        # skip empty names
                         continue
                     doc = Document()
                     for t in texts:
@@ -597,7 +605,6 @@ elif mode == "Forms Feedbacktool":
                         titel = t.get("titel", "")
                         fp_list = t.get("feedback_points", [])
                         for fp in fp_list:
-                            # Heading: combine cg and title and the feedback point
                             heading_text_parts = []
                             if cg:
                                 heading_text_parts.append(cg)
@@ -608,7 +615,6 @@ elif mode == "Forms Feedbacktool":
                                 heading_text = f"{heading_main}. {fp}" if fp else heading_main
                             else:
                                 heading_text = fp or ""
-                            # Add heading
                             p_head = doc.add_paragraph()
                             run_h = p_head.add_run(heading_text)
                             run_h.font.bold = True
@@ -618,7 +624,6 @@ elif mode == "Forms Feedbacktool":
                                 run_h._element.rPr.rFonts.set(qn("w:eastAsia"), font_family)
                             except Exception:
                                 pass
-                            # Date line
                             p_date = doc.add_paragraph()
                             run_d = p_date.add_run(f"FB voor VC {today_str}")
                             run_d.font.bold = True
@@ -628,7 +633,6 @@ elif mode == "Forms Feedbacktool":
                                 run_d._element.rPr.rFonts.set(qn("w:eastAsia"), font_family)
                             except Exception:
                                 pass
-                            # Table with two columns: VC lid | <feedback field>
                             table = doc.add_table(rows=1, cols=2)
                             ensure_table_grid(table)
                             hdr_cells = table.rows[0].cells
@@ -639,7 +643,6 @@ elif mode == "Forms Feedbacktool":
                             right_hdr = hdr_cells[1].paragraphs[0]
                             right_hdr.text = right_header_text
                             format_para_no_spacing(right_hdr, font_family, font_size_pt, bold=True, text_override=right_header_text)
-                            # One row with the VC member name and an empty cell for feedback
                             row_cells = table.add_row().cells
                             left_cell_para = row_cells[0].paragraphs[0]
                             left_cell_para.text = vc_name
@@ -647,11 +650,8 @@ elif mode == "Forms Feedbacktool":
                             right_cell_para = row_cells[1].paragraphs[0]
                             right_cell_para.text = ""
                             format_para_no_spacing(right_cell_para, font_family, font_size_pt, bold=False, text_override="")
-                            # Page break after each feedback point
                             doc.add_page_break()
-                    # Save doc to bytes
                     bio = io.BytesIO()
-                    # Build filename like: 2026-06-22_VC_Annemieke_Bonnema_FB.docx
                     fname = f"{today_str}_VC_{safe_filename(vc_name)}_FB.docx"
                     try:
                         doc.save(bio)
@@ -659,14 +659,12 @@ elif mode == "Forms Feedbacktool":
                         generated.append({"fname": fname, "data": bio.read()})
                     except Exception as e:
                         status.error(f"Fout bij opslaan document voor {vc_name}: {e}")
-                # store in session state so download buttons remain after clicking
                 st.session_state["ff_generated"] = generated
                 if not generated:
                     status.warning("Er zijn geen documenten gegenereerd (mogelijk namen van VC-leden leeg).")
                 else:
                     status.success(f"✅ {len(generated)} document(en) gegenereerd en klaargezet voor download.")
 
-        # Show generated files if present in session_state (so buttons persist after download click)
         if st.session_state.get("ff_generated"):
             st.markdown("### Beschikbare gegenereerde documenten")
             for idx, item in enumerate(st.session_state["ff_generated"], start=1):
@@ -681,7 +679,6 @@ elif mode == "Forms Feedbacktool":
                     mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                     key=f"ff_dl_{idx}"
                 )
-            # offer ZIP as well
             zip_buf = io.BytesIO()
             with zipfile.ZipFile(zip_buf, "w", compression=zipfile.ZIP_DEFLATED) as z:
                 for item in st.session_state["ff_generated"]:
@@ -690,8 +687,186 @@ elif mode == "Forms Feedbacktool":
             zip_name = f"FB_Gebundeld_{vc_date.isoformat()}.zip"
             st.download_button(label="Download alle documenten als ZIP", data=zip_buf.getvalue(), file_name=safe_filename(zip_name) or zip_name, mime="application/zip", key="ff_dl_zip")
 
+    # ---------------- Section 2: merging uploaded docx ----------------
     else:
-        # Placeholder for merging tool
-        st.subheader("2) Feedbackformulieren samenvoegen (coming soon)")
-        st.write("In deze sectie kun je later meerdere feedbackdocumenten samenvoegen tot één bundel per VC, of per CG. Voor nu kun je al individuele documenten genereren in de eerste sectie.")
-        st.info("Wil je dat ik deze sectie nu ook direct toevoeg (bijv. Excel upload -> per VC samenvoegen)? Geef aan welke workflow je wilt, dan werk ik het uit.")
+        st.subheader("2) Feedbackformulieren samenvoegen")
+        st.write("Upload 2 of meer .docx bestanden. Tabellen met dezelfde koptekst (bijv. 'CG1, ... Geschiktheid Checklist') worden samengevoegd per CG. Er wordt per CG één gebundeld document gemaakt.")
+
+        uploaded = st.file_uploader("Upload .docx bestanden (meerdere mogelijk)", type=["docx"], accept_multiple_files=True)
+        merge_btn = st.button("Start samenvoegen")
+
+        if uploaded and len(uploaded) < 2:
+            st.warning("Upload minimaal 2 bestanden om samen te voegen.")
+
+        if merge_btn:
+            if not uploaded or len(uploaded) < 2:
+                st.error("Je moet minstens 2 .docx bestanden uploaden.")
+            else:
+                status = st.empty()
+                # structures:
+                # groups: { (cg_prefix or 'UNGROUPED'): { heading_text: {'order': n, 'header': [h1,h2], 'rows': [ [col1, col2], ... ] } } }
+                groups = {}
+                appearance_counter = 0
+                dates_found = []
+                file_names = [f.name if hasattr(f, "name") else "uploaded.docx" for f in uploaded]
+
+                for f in uploaded:
+                    try:
+                        doc = Document(f)
+                    except Exception as e:
+                        status.error(f"Kon bestand niet openen: {getattr(f, 'name', str(f))}: {e}")
+                        continue
+
+                    last_para_text = ""
+                    last_date_text = None
+
+                    for block_type, block in iter_block_items(doc):
+                        if block_type == "p":
+                            txt = block.text.strip() if block.text else ""
+                            if txt:
+                                last_para_text = txt
+                                # try extract date if paragraph contains something like FB voor VC YYYY-MM-DD or a date
+                                m = re.search(r"(\d{4}-\d{2}-\d{2})", txt)
+                                if m:
+                                    dates_found.append(m.group(1))
+                                    last_date_text = m.group(1)
+                        elif block_type == "tbl":
+                            table = block  # docx.table.Table
+                            # header row texts
+                            if not table.rows:
+                                continue
+                            hdr_cells = [c.text.strip() for c in table.rows[0].cells]
+                            data_rows = []
+                            for row in table.rows[1:]:
+                                row_texts = [cell.text.strip() for cell in row.cells]
+                                # If row empty skip
+                                if any(cell != "" for cell in row_texts):
+                                    data_rows.append(row_texts)
+                            heading_text = last_para_text or "Onbekende kop"
+                            # determine cg prefix
+                            cg_match = re.match(r"^(CG\d+)", heading_text)
+                            cg_prefix = cg_match.group(1) if cg_match else "UNGROUPED"
+                            # create group if needed
+                            if cg_prefix not in groups:
+                                groups[cg_prefix] = {}
+                            # ensure heading group exists within cg_prefix
+                            if heading_text not in groups[cg_prefix]:
+                                appearance_counter += 1
+                                groups[cg_prefix][heading_text] = {
+                                    "order": appearance_counter,
+                                    "header": hdr_cells,
+                                    "rows": list(data_rows),
+                                }
+                            else:
+                                # append rows
+                                groups[cg_prefix][heading_text]["rows"].extend(data_rows)
+                # decide date for filenames and for "Gebundelde FB ..." header
+                unique_dates = sorted(set(dates_found))
+                chosen_date = None
+                if len(unique_dates) == 0:
+                    # ask user for date
+                    st.warning("Geen datums gevonden in de geüploade documenten. Kies handmatig de datum voor de gebundelde bestanden.")
+                    chosen_date = st.date_input("Datum voor gebundelde bestanden", value=date.today())
+                    chosen_date = chosen_date.isoformat()
+                elif len(unique_dates) == 1:
+                    chosen_date = unique_dates[0]
+                else:
+                    chosen_date = st.selectbox("Meerdere datums gevonden in bestanden. Kies welke datum te gebruiken in de bestandsnamen:", options=unique_dates, index=0)
+
+                # generate per-CG documents
+                generated = []
+                for cg_prefix, headings in groups.items():
+                    # sort headings by appearance order
+                    sorted_headings = sorted(headings.items(), key=lambda kv: kv[1]["order"])
+                    doc = Document()
+                    any_tables_written = False
+                    for heading_text, info in sorted_headings:
+                        hdr_cells = info.get("header", ["VC lid", "Opmerking"])
+                        rows = info.get("rows", [])
+                        # skip if no rows (maybe empty)
+                        # create heading
+                        p_head = doc.add_paragraph()
+                        run_h = p_head.add_run(heading_text)
+                        run_h.font.bold = True
+                        run_h.font.size = Pt(12)
+                        try:
+                            run_h.font.name = "Times New Roman"
+                            run_h._element.rPr.rFonts.set(qn("w:eastAsia"), "Times New Roman")
+                        except Exception:
+                            pass
+                        # date line
+                        p_date = doc.add_paragraph()
+                        run_d = p_date.add_run(f"Gebundelde FB voor VC {chosen_date}")
+                        run_d.font.bold = True
+                        run_d.font.size = Pt(11)
+                        try:
+                            run_d.font.name = "Times New Roman"
+                            run_d._element.rPr.rFonts.set(qn("w:eastAsia"), "Times New Roman")
+                        except Exception:
+                            pass
+                        # create table
+                        table = doc.add_table(rows=1, cols=max(2, len(hdr_cells)))
+                        ensure_table_grid(table)
+                        # write headers
+                        hdr_row_cells = table.rows[0].cells
+                        for i, hc in enumerate(hdr_cells):
+                            if i >= len(hdr_row_cells):
+                                break
+                            para = hdr_row_cells[i].paragraphs[0]
+                            para.text = hc
+                            format_para_no_spacing(para, "Times New Roman", 11, bold=True, text_override=hc)
+                        # write data rows
+                        for rdata in rows:
+                            # ensure number of columns matches; if fewer cells, pad; if more, ignore extra
+                            row_cells = table.add_row().cells
+                            for ci in range(len(hdr_cells)):
+                                value = rdata[ci] if ci < len(rdata) else ""
+                                para = row_cells[ci].paragraphs[0]
+                                para.text = value
+                                format_para_no_spacing(para, "Times New Roman", 11, bold=False, text_override=value)
+                        doc.add_page_break()
+                        any_tables_written = True
+                    if any_tables_written:
+                        fname = f"{cg_prefix}_VC{chosen_date}_FB_Gebundeld.docx"
+                        bio = io.BytesIO()
+                        try:
+                            doc.save(bio)
+                            bio.seek(0)
+                            generated.append({"fname": fname, "data": bio.read()})
+                        except Exception as e:
+                            st.error(f"Fout bij opslaan {cg_prefix}: {e}")
+                if not generated:
+                    st.warning("Er zijn geen gebundelde documenten gemaakt (mogelijk waren er geen tabellen met inhoud).")
+                else:
+                    # store in session_state so download buttons persist
+                    st.session_state["merge_generated"] = generated
+                    st.success(f"✅ {len(generated)} gebundelde document(en) aangemaakt.")
+                    # show download buttons
+                    for idx, item in enumerate(st.session_state["merge_generated"], start=1):
+                        st.download_button(
+                            label=item["fname"],
+                            data=item["data"],
+                            file_name=safe_filename(item["fname"]) or item["fname"],
+                            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                            key=f"merge_dl_{idx}"
+                        )
+                    # zip
+                    zip_buf = io.BytesIO()
+                    with zipfile.ZipFile(zip_buf, "w", compression=zipfile.ZIP_DEFLATED) as z:
+                        for item in st.session_state["merge_generated"]:
+                            z.writestr(safe_filename(item["fname"]) or item["fname"], item["data"])
+                    zip_buf.seek(0)
+                    zip_name = f"FB_Gebundeld_{chosen_date}.zip"
+                    st.download_button(label="Download alle gebundelde documenten (.zip)", data=zip_buf.getvalue(), file_name=safe_filename(zip_name) or zip_name, mime="application/zip", key="merge_zip_dl")
+
+        # if there are previously generated merged files in session, show them
+        if st.session_state.get("merge_generated"):
+            st.markdown("### Eerder aangemaakte gebundelde documenten in deze sessie")
+            for idx, item in enumerate(st.session_state["merge_generated"], start=1):
+                st.download_button(
+                    label=item["fname"],
+                    data=item["data"],
+                    file_name=safe_filename(item["fname"]) or item["fname"],
+                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    key=f"merge_prev_dl_{idx}"
+                )
