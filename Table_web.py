@@ -8,7 +8,7 @@ import zipfile
 import re
 from datetime import date
 
-
+# Try to set dark theme for Streamlit
 try:
     cfg_dir = os.path.join(os.getcwd(), ".streamlit")
     os.makedirs(cfg_dir, exist_ok=True)
@@ -25,7 +25,6 @@ def safe_filename(s):
     s = str(s).strip()
     s = s.replace(" ", "_")
     return re.sub(r"[^A-Za-z0-9._-]", "", s)
-
 
 def wrap_text(text, width):
     if text is None or str(text).strip() == "":
@@ -49,7 +48,6 @@ def wrap_text(text, width):
         wrapped_lines.append(current_line)
         lines_for_curr_text += 1
     return {"wrapped_text": "\n".join(wrapped_lines), "line_count": lines_for_curr_text}
-
 
 # ---------- TableImage (for the "Tabel Maken" preview) ----------
 class TableImage:
@@ -96,11 +94,9 @@ class TableImage:
         self.font_size = int(font_size)
         self.cells = {}
         self.bold_cells = {}
-
     def set_text(self, row, col, text, bold=False):
         self.cells[(int(row), int(col))] = "" if text is None else str(text)
         self.bold_cells[(int(row), int(col))] = bool(bold)
-
     def draw(self):
         img = Image.new("RGB", (self.width, self.height), self.bg_color)
         draw = ImageDraw.Draw(img)
@@ -159,7 +155,6 @@ class TableImage:
                 current_y += line_height
         return img
 
-
 # ---------- Sleepoptie image helper ----------
 def create_sleepoptie_single_image(
     text,
@@ -216,7 +211,6 @@ def create_sleepoptie_single_image(
     filename = f"{tekst_titel}_{tekst_itemnummer}.png"
     return img, filename
 
-
 # ---------- Streamlit UI & CSS ----------
 st.set_page_config(page_title="Sleepoptie en Tabel Generator", layout="wide")
 st.markdown(
@@ -230,7 +224,6 @@ st.markdown(
     unsafe_allow_html=True,
 )
 st.info("Laatste Update: 2026-05-27 - Grootte van sleepopties bij 1 regel gefixt")
-
 manual_filename = "Nieuwe Itemtypes Handleiding Invoer TOM.docx"
 base_dir = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
 manual_path = os.path.join(base_dir, manual_filename)
@@ -250,7 +243,6 @@ except Exception as e:
     st.error(f"Kon handleiding niet laden: {e}")
 
 st.caption("Links vul je informatie in, rechts zie je de plaatjes.")
-
 mode = st.selectbox("Kies functie:", ["Tabel Maken", "Sleepopties Maken", "Forms Feedbacktool"], index=0)
 left, right = st.columns([1, 1.2])
 
@@ -323,14 +315,12 @@ if mode == "Tabel Maken":
                 row1_height = int(heading_lines * 18)
                 row2_height = int(longest_rows * 20 * answers_per_box)
                 row_heights = [row1_height, row2_height]
-
         table = TableImage(rows=rows, cols=cols, row_height=row_heights, col_width=col_width, font_size=11, line_width=1, wrap_width=max_chars_per_line)
         st.subheader("Vul de benodigde tekst per cel van de tabel in")
         if table_type.startswith("Type 2"):
             bold_choice = st.checkbox("Vink dit aan als de tekst dikgedrukt moet zijn", key="table_bold_all")
         else:
             bold_choice = False
-
         for r in range(rows):
             cols_inputs = st.columns(cols)
             for c in range(cols):
@@ -342,7 +332,6 @@ if mode == "Tabel Maken":
                     else:
                         bold_cell = bold_choice
                 table.set_text(r, c, text, bold=bold_cell)
-
     with right:
         st.subheader("Preview & Downloaden (Tabel)")
         try:
@@ -356,7 +345,6 @@ if mode == "Tabel Maken":
             st.download_button(label="Download het plaatje", data=byte_im, file_name=fname_safe, mime="image/png", key="download_table")
         except Exception as e:
             st.error(f"Kon tabel niet genereren: {e}")
-
 
 # ----------------- SLEEPOPTIES MAKEN (full functionality) -----------------
 elif mode == "Sleepopties Maken":
@@ -375,7 +363,6 @@ elif mode == "Sleepopties Maken":
         for idx, L in enumerate(letters):
             with opt_cols[idx % 2]:
                 options[idx] = st.text_area(f"Sleepoptie {L}", value="", height=80, key=f"opt_{L}")
-
     with right:
         st.subheader("Gegenereerde plaatjes")
         base_dir = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
@@ -404,7 +391,7 @@ elif mode == "Sleepopties Maken":
                 if not text or text.strip() == "":
                     continue
                 letter = chr(64 + idx)
-                img, _ = create_sleepoptie_single_image(
+                img, _= create_sleepoptie_single_image(
                     text,
                     tekst_titel=tekst_titel,
                     tekst_itemnummer=f"{tekst_itemnummer}_{letter}",
@@ -436,49 +423,21 @@ elif mode == "Sleepopties Maken":
                 zip_name = prefix + f"{safe_filename(tekst_titel)}_{tekst_itemnummer}_alle_sleepopties.zip"
                 st.download_button(label="Download alle plaatjes in 1 keer (.zip)", data=zip_buffer.getvalue(), file_name=safe_filename(zip_name) or "sleepopties.zip", mime="application/zip", key="download_all_zip")
 
-
-# ----------------- FORMS FEEDBACKTOOL (simplified, no preview) -----------------
+# ----------------- FORMS FEEDBACKTOOL (REDESIGNED) -----------------
 elif mode == "Forms Feedbacktool":
-    # heavy imports only here
+    # We need python-docx
     try:
-        import pandas as pd
         from docx import Document
         from docx.shared import Pt
-        from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
         from docx.oxml import OxmlElement
         from docx.oxml.ns import qn
     except Exception:
-        st.error("Deze feature vereist extra packages: pandas en python-docx. Installeer met: pip install pandas python-docx openpyxl")
+        st.error("Deze feature vereist extra package: python-docx. Installeer met: pip install python-docx")
         st.stop()
 
-    # helpers for Forms tool
-    def reformat_data(df: pd.DataFrame) -> pd.DataFrame:
-        df = df.copy()
-        if "Geef uw naam" in df.columns:
-            df = df.rename(columns={"Geef uw naam": "VC lid"})
-        if "VC lid" not in df.columns:
-            df["VC lid"] = ""
-        for c in df.select_dtypes(include=["object", "string"]).columns:
-            df[c] = df[c].fillna("geen opmerkingen").astype(str)
-        df = df.fillna("geen opmerkingen")
-        return df
-
-    def sanitize_filename(name: str) -> str:
-        if name is None:
-            return ""
-        return re.sub(r"[^0-9A-Za-z._-]", "_", str(name))
-
-    def extract_column_name(col_name: str) -> str:
-        if not isinstance(col_name, str):
-            col_name = str(col_name)
-        parts = col_name.split()
-        for i in range(len(parts) - 1, -1, -1):
-            if re.search(r"[A-Z]", parts[i]):
-                return " ".join(parts[i:])
-        return col_name
-
-    # robust ensure_table_grid that doesn't rely on get_or_add_tblPr
+    # Helpers for Word formatting & table borders
     def ensure_table_grid(table):
+        # Similar approach to previous implementation but robust
         tbl = table._tbl  # lxml element
         # find or create tblPr
         tblPr = None
@@ -507,22 +466,19 @@ elif mode == "Forms Feedbacktool":
             borders.append(node)
         tblPr.append(borders)
 
-    # Helper: format a paragraph so there is no extra spacing between lines / before/after
-    def format_para_no_spacing(para, font_family, font_size_pt, bold=False):
-        from docx.shared import Pt as _Pt  # local import to avoid issues if docx missing earlier
-        # paragraph spacing
-        pf = para.paragraph_format
+    def format_para_no_spacing(para, font_family, font_size_pt, bold=False, text_override=None):
+        # Removes extra spacing and sets font on newly created run
         try:
-            pf.space_before = _Pt(0)
-            pf.space_after = _Pt(0)
+            pf = para.paragraph_format
+            pf.space_before = Pt(0)
+            pf.space_after = Pt(0)
             pf.line_spacing = 1.0
         except Exception:
             pass
-        # ensure text and run formatting
-        text = para.text or ""
+        text = text_override if text_override is not None else (para.text or "")
         para.text = ""
         run = para.add_run(text)
-        run.font.size = _Pt(font_size_pt)
+        run.font.size = Pt(font_size_pt)
         run.font.bold = bold
         try:
             run.font.name = font_family
@@ -531,54 +487,136 @@ elif mode == "Forms Feedbacktool":
             pass
         return run
 
-    st.header("Forms Feedbacktool — Van Forms naar Word")
-    st.write("Upload een Excel (.xlsx). Voor 2F: Per CG een apart bestand. Voor 3F: Alles in 1 bestand. Dit komt doordat de Forms anders opgesteld zijn. Als er in de toekomst wat verandert aan het Forms-formulier, dan kan het programma 'kapot' gaan. Laat dit dan weten, en dan zal ik kijken of het snel te fixen is! :)")
+    st.header("Forms Feedbacktool — nieuw ontwerp")
+    st.write("Deze tool heeft twee secties: 'Feedbackformulieren genereren' en 'Feedbackformulieren samenvoegen'.")
+    tab = st.radio("Kies sectie:", ("Feedbackformulieren genereren", "Feedbackformulieren samenvoegen"))
 
-    # minimal user input
-    font_family = st.selectbox("Lettertype voor Word", ["Calibri", "Times New Roman", "Arial"], index=0)
-    font_size_pt = st.number_input("Lettergrootte (pt) voor Word", min_value=8, max_value=18, value=11, step=1)
+    if tab == "Feedbackformulieren genereren":
+        st.subheader("1) Feedbackformulieren genereren")
+        st.write("Geef hieronder op voor welke teksten je feedbackformulieren wilt aanmaken en welke onderdelen per tekst feedback moeten krijgen.")
 
-    uploaded = st.file_uploader("Upload Excel file (.xlsx)", type=["xlsx"], accept_multiple_files=False)
-    process = st.button("Generate Word Documents")
-    status = st.empty()
+        # Top-level inputs
+        num_texts = st.number_input("Hoeveel teksten wil je invoeren?", min_value=1, max_value=50, value=1, step=1, key="ff_num_texts")
+        texts = []
+        for i in range(int(num_texts)):
+            with st.expander(f"Tekst #{i+1}", expanded=(i == 0)):
+                cg = st.text_input(f"CG (bijv. CG5 of vrij tekst) voor tekst #{i+1}", key=f"ff_cg_{i}")
+                vc_type = st.selectbox(f"VC type voor tekst #{i+1}", options=["2F", "3F"], key=f"ff_vc_{i}")
+                tekst_titel = st.text_input(f"Teksttitel voor tekst #{i+1}", key=f"ff_title_{i}")
+                soort = st.selectbox(f"Soort tekst/items voor tekst #{i+1}", options=["Checklist", "Items", "Bezem", "Anders"], key=f"ff_type_{i}")
 
-    if process:
-        if uploaded is None:
-            st.warning("Upload eerst een .xlsx bestand.")
-        else:
-            try:
-                df_raw = pd.read_excel(uploaded, engine="openpyxl")
-                df = reformat_data(df_raw)
-                cg_columns = [c for c in df.columns if re.match(r"^CG\d+", str(c))]
+                # Initialize feedback points list for this text
+                feedback_points = []
+
+                if soort == "Checklist":
+                    st.markdown("Kies of je feedback wilt op:")
+                    ch1 = st.checkbox("Geschiktheid Checklist", key=f"ff_check_geschik_{i}")
+                    ch2 = st.checkbox("Opmerkingen", key=f"ff_check_opm_{i}")
+                    if ch1:
+                        feedback_points.append("Geschiktheid Checklist")
+                    if ch2:
+                        feedback_points.append("Opmerkingen")
+
+                elif soort == "Items":
+                    st.markdown("Kies of je feedback wilt op:")
+                    it1 = st.checkbox("Algemene opmerkingen", key=f"ff_items_alg_{i}")
+                    it2 = st.checkbox("Titel", key=f"ff_items_titel_{i}")
+                    items_count = st.number_input("Over hoeveel items wil je feedback krijgen?", min_value=0, value=0, step=1, key=f"ff_items_count_{i}")
+                    if it1:
+                        feedback_points.append("Algemene opmerkingen")
+                    if it2:
+                        feedback_points.append("Titel")
+                    for itn in range(int(items_count)):
+                        feedback_points.append(f"Item {itn+1}")
+
+                elif soort == "Bezem":
+                    st.markdown("Bezem: kies of je algemene opmerkingen wilt en geef welke bezems (bijv. '2,5'):")
+                    bz1 = st.checkbox("Algemene opmerkingen", key=f"ff_bezem_alg_{i}")
+                    bezems_raw = st.text_input("Welke bezems? (komma-gescheiden nummers)", key=f"ff_bezem_list_{i}")
+                    if bz1:
+                        feedback_points.append("Algemene opmerkingen")
+                    # parse bezems
+                    bezems = []
+                    if bezems_raw and bezems_raw.strip():
+                        parts = re.split(r"[,\s;]+", bezems_raw.strip())
+                        for p in parts:
+                            if p.strip() != "":
+                                # keep as is (so '2' or '2a' allowed), but strip non-printable
+                                bezems.append(p.strip())
+                    for b in bezems:
+                        feedback_points.append(f"Bezem {b}")
+
+                elif soort == "Anders":
+                    st.markdown("Voer zelf op waar je feedback op wilt. Eén regel = één feedbackpunt.")
+                    anders_raw = st.text_area("Vul hier de namen van de feedbackpunten (één per regel)", key=f"ff_anders_{i}", height=120)
+                    if anders_raw and anders_raw.strip():
+                        for ln in anders_raw.splitlines():
+                            if ln.strip():
+                                feedback_points.append(ln.strip())
+
+                texts.append({
+                    "cg": cg.strip() if isinstance(cg, str) else str(cg),
+                    "vc_type": vc_type,
+                    "titel": tekst_titel.strip() if isinstance(tekst_titel, str) else str(tekst_titel),
+                    "soort": soort,
+                    "feedback_points": feedback_points,
+                })
+
+        st.markdown("---")
+        st.subheader("VC-instellingen")
+        vc_date = st.date_input("Datum van VC", value=date.today(), key="ff_vc_date")
+        vc_count = st.number_input("Aantal VC-leden", min_value=1, value=1, step=1, key="ff_vc_count")
+        vc_names = []
+        for vi in range(int(vc_count)):
+            name = st.text_input(f"Naam VC-lid #{vi+1}", key=f"ff_vc_name_{vi}")
+            vc_names.append(name.strip())
+
+        st.markdown("---")
+        font_family = st.selectbox("Lettertype voor Word (word-compatibel)", ["Calibri", "Times New Roman", "Arial"], index=0, key="ff_font")
+        font_size_pt = st.number_input("Lettergrootte (pt) voor Word", min_value=8, max_value=18, value=11, step=1, key="ff_pt")
+
+        generate = st.button("Genereer feedbackdocumenten", key="ff_generate")
+
+        if generate:
+            status = st.empty()
+            # Validate presence of at least one feedback point across texts
+            total_points = 0
+            for t in texts:
+                total_points += len(t["feedback_points"])
+            if total_points == 0:
+                status.error("Er zijn geen feedbackpunten opgegeven. Vul voor minstens één tekst aan waarop feedback moet komen.")
+            else:
+                # Generate one .docx per VC member: each document contains one page per feedback point across all texts.
                 generated = []
-                today_str = date.today().isoformat()
-
-                # columns to exclude when building the single big document
-                exclude_columns_set = {
-                    "Tijd van laatste wijziging",
-                    "Naam",
-                    "E-mail",
-                    "Tijd van voltooien",
-                    "Begintijd",
-                    "ID",
-                }
-
-                if not cg_columns:
-                    # No CG columns: create one big Word file with all (other) columns as separate tables
-                    # Exclude VC lid and the specified meta columns
-                    columns_to_process = [c for c in df.columns if c != "VC lid" and (str(c).strip() not in exclude_columns_set)]
-                    if not columns_to_process:
-                        status.error("Geen kolommen gevonden om in het document te zetten (alleen 'VC lid' en/of uitgesloten meta-kolommen aanwezig).")
-                    else:
-                        doc = Document()
-                        for col in columns_to_process:
-                            simple_name = extract_column_name(str(col))
-                            current_df = df[["VC lid", col]].copy()
-                            current_df.columns = ["VC lid", simple_name]
-
-                            # Heading bold
+                today_str = vc_date.isoformat()
+                for vc_name in vc_names:
+                    if not vc_name or vc_name.strip() == "":
+                        # skip empty names
+                        continue
+                    doc = Document()
+                    for t in texts:
+                        cg = t.get("cg", "")
+                        titel = t.get("titel", "")
+                        fp_list = t.get("feedback_points", [])
+                        for fp in fp_list:
+                            # Heading: "CG5 Hoe groen is groen, Nieuwe items. Algemene opmerkingen"
+                            heading_text = ""
+                            if cg:
+                                heading_text += f"{cg} "
+                            if titel:
+                                heading_text += f"{titel}"
+                            if heading_text and not heading_text.endswith("."):
+                                heading_text = heading_text.strip()
+                            if fp:
+                                if heading_text:
+                                    heading_text = f"{heading_text}. {fp}"
+                                else:
+                                    heading_text = fp
+                            else:
+                                heading_text = heading_text or fp or ""
+                            # Add heading
                             p_head = doc.add_paragraph()
-                            run_h = p_head.add_run(str(col))
+                            run_h = p_head.add_run(heading_text)
                             run_h.font.bold = True
                             run_h.font.size = Pt(font_size_pt + 1)
                             try:
@@ -586,9 +624,9 @@ elif mode == "Forms Feedbacktool":
                                 run_h._element.rPr.rFonts.set(qn("w:eastAsia"), font_family)
                             except Exception:
                                 pass
-                            # Date bold
+                            # Date line
                             p_date = doc.add_paragraph()
-                            run_d = p_date.add_run(f"VC {today_str}")
+                            run_d = p_date.add_run(f"FB voor VC {today_str}")
                             run_d.font.bold = True
                             run_d.font.size = Pt(font_size_pt)
                             try:
@@ -596,111 +634,55 @@ elif mode == "Forms Feedbacktool":
                                 run_d._element.rPr.rFonts.set(qn("w:eastAsia"), font_family)
                             except Exception:
                                 pass
-
-                            # Table with gridlines
+                            # Table with two columns: VC lid | <feedback field>
                             table = doc.add_table(rows=1, cols=2)
                             ensure_table_grid(table)
-
-                            hdr_texts = ["VC lid", simple_name]
                             hdr_cells = table.rows[0].cells
-                            for i, cell in enumerate(hdr_cells):
-                                para = cell.paragraphs[0]
-                                para.text = hdr_texts[i]
-                                format_para_no_spacing(para, font_family, font_size_pt, bold=True)
-
-                            for _, row in current_df.iterrows():
-                                r_cells = table.add_row().cells
-                                left_para = r_cells[0].paragraphs[0]
-                                left_para.text = str(row["VC lid"])
-                                format_para_no_spacing(left_para, font_family, font_size_pt, bold=False)
-                                right_para = r_cells[1].paragraphs[0]
-                                right_para.text = str(row[simple_name])
-                                format_para_no_spacing(right_para, font_family, font_size_pt, bold=False)
-
+                            left_hdr = hdr_cells[0].paragraphs[0]
+                            left_hdr.text = "VC lid"
+                            format_para_no_spacing(left_hdr, font_family, font_size_pt, bold=True, text_override="VC lid")
+                            right_header_text = fp if fp else "Opmerking"
+                            right_hdr = hdr_cells[1].paragraphs[0]
+                            right_hdr.text = right_header_text
+                            format_para_no_spacing(right_hdr, font_family, font_size_pt, bold=True, text_override=right_header_text)
+                            # One row with the VC member name and an empty cell for feedback
+                            row_cells = table.add_row().cells
+                            left_cell_para = row_cells[0].paragraphs[0]
+                            left_cell_para.text = vc_name
+                            format_para_no_spacing(left_cell_para, font_family, font_size_pt, bold=False, text_override=vc_name)
+                            right_cell_para = row_cells[1].paragraphs[0]
+                            right_cell_para.text = ""
+                            format_para_no_spacing(right_cell_para, font_family, font_size_pt, bold=False, text_override="")
+                            # Page break after each feedback point
                             doc.add_page_break()
-
-                        filename = f"{today_str}_allefeedback.docx"
-                        bio = io.BytesIO()
+                    # Save doc to bytes
+                    bio = io.BytesIO()
+                    # Build filename like: 2026-06-22_VC_Annemieke_Bonnema_FB.docx
+                    fname = f"{today_str}_VC_{safe_filename(vc_name)}_FB.docx"
+                    try:
                         doc.save(bio)
                         bio.seek(0)
-                        generated.append((filename, bio.read()))
-                else:
-                    # There are CG columns: previous behavior - per-prefix docs
-                    prefixes = sorted({re.match(r"^(CG\d+)", str(c)).group(1) for c in cg_columns})
-                    for prefix in prefixes:
-                        doc = Document()
-                        cols_for_prefix = [c for c in cg_columns if str(c).startswith(prefix)]
-                        for cg_col in cols_for_prefix:
-                            if cg_col not in df.columns:
-                                continue
-                            current_df = df[["VC lid", cg_col]].copy()
-                            simple_name = extract_column_name(str(cg_col))
-                            current_df.columns = ["VC lid", simple_name]
+                        generated.append((fname, bio.read()))
+                    except Exception as e:
+                        status.error(f"Fout bij opslaan document voor {vc_name}: {e}")
 
-                            # Heading (bold) and date (bold)
-                            p_head = doc.add_paragraph()
-                            run_h = p_head.add_run(str(cg_col))
-                            run_h.font.bold = True
-                            run_h.font.size = Pt(font_size_pt + 1)
-                            try:
-                                run_h.font.name = font_family
-                                run_h._element.rPr.rFonts.set(qn("w:eastAsia"), font_family)
-                            except Exception:
-                                pass
-
-                            p_date = doc.add_paragraph()
-                            run_d = p_date.add_run(f"VC {today_str}")
-                            run_d.font.bold = True
-                            run_d.font.size = Pt(font_size_pt)
-                            try:
-                                run_d.font.name = font_family
-                                run_d._element.rPr.rFonts.set(qn("w:eastAsia"), font_family)
-                            except Exception:
-                                pass
-
-                            # Create table and ensure gridlines
-                            table = doc.add_table(rows=1, cols=2)
-                            ensure_table_grid(table)
-
-                            hdr_texts = ["VC lid", simple_name]
-                            hdr_cells = table.rows[0].cells
-                            for i, cell in enumerate(hdr_cells):
-                                para = cell.paragraphs[0]
-                                para.text = hdr_texts[i]
-                                format_para_no_spacing(para, font_family, font_size_pt, bold=True)
-
-                            # Fill rows
-                            for _, row in current_df.iterrows():
-                                r_cells = table.add_row().cells
-                                left_para = r_cells[0].paragraphs[0]
-                                left_para.text = str(row["VC lid"])
-                                format_para_no_spacing(left_para, font_family, font_size_pt, bold=False)
-                                right_para = r_cells[1].paragraphs[0]
-                                right_para.text = str(row[simple_name])
-                                format_para_no_spacing(right_para, font_family, font_size_pt, bold=False)
-
-                            doc.add_page_break()
-
-                        sanitized_prefix = safe_filename(prefix)
-                        filename = f"{today_str}_FB_Gebundeld_{sanitized_prefix}.docx"
-                        bio = io.BytesIO()
-                        doc.save(bio)
-                        bio.seek(0)
-                        generated.append((filename, bio.read()))
-
-                # Offer downloads
                 if not generated:
-                    status.warning("Geen documenten gegenereerd.")
+                    status.warning("Er zijn geen documenten gegenereerd (mogelijk namen van VC-leden leeg).")
                 else:
-                    status.success(f"✅ {len(generated)} Word-document(en) gegenereerd.")
+                    status.success(f"✅ {len(generated)} document(en) gegenereerd.")
                     for idx, (fname, data_bytes) in enumerate(generated, start=1):
-                        st.download_button(label=fname, data=data_bytes, file_name=safe_filename(fname) or fname, mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", key=f"fb_download_{idx}")
-                    # ZIP all
+                        st.download_button(label=fname, data=data_bytes, file_name=safe_filename(fname) or fname, mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", key=f"ff_dl_{idx}")
+                    # also offer a zip
                     zip_buf = io.BytesIO()
                     with zipfile.ZipFile(zip_buf, "w", compression=zipfile.ZIP_DEFLATED) as z:
                         for fname, data_bytes in generated:
                             z.writestr(safe_filename(fname) or fname, data_bytes)
                     zip_buf.seek(0)
-                    st.download_button(label="Download alle documenten als ZIP", data=zip_buf.getvalue(), file_name=f"FB_Gebundeld_{today_str}.zip", mime="application/zip", key="fb_zip_all")
-            except Exception as e:
-                status.error(f"Fout bij verwerken: {e}")
+                    zip_name = f"FB_Gebundeld_{vc_date.isoformat()}.zip"
+                    st.download_button(label="Download alle documenten als ZIP", data=zip_buf.getvalue(), file_name=safe_filename(zip_name) or zip_name, mime="application/zip", key="ff_dl_zip")
+
+    else:
+        # Placeholder for merging tool
+        st.subheader("2) Feedbackformulieren samenvoegen (coming soon)")
+        st.write("In deze sectie kun je later meerdere feedbackdocumenten samenvoegen tot één bundel per VC, of per CG. Voor nu kun je al individuele documenten genereren in de eerste sectie.")
+        st.info("Wil je dat ik deze sectie nu ook direct toevoeg (bijv. Excel upload -> per VC samenvoegen)? Geef aan welke workflow je wilt, dan werk ik het uit.")
