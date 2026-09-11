@@ -379,7 +379,7 @@ if mode == "Tabel Maken":
                 longest_rows = int(st.number_input("Hoeveel regels zijn nodig voor het langste antwoord?", min_value=1, value=1, step=1, key="longest_rows_type2"))
                 answers_per_box = int(st.number_input("Hoeveel sleepopties moeten er in 1 sleepvak kunnen?", min_value=1, value=1, step=1, key="answers_per_box"))
                 row1_height = int(heading_lines * 18)
-                row2_height = int(longest_rows * 20 * answers_per_box)
+                row2_height = int(longest_rows * 22 * answers_per_box)
                 row_heights = [row1_height, row2_height]
 
         table = TableImage(rows=rows, cols=cols, row_height=row_heights, col_width=col_width, font_size=11, line_width=1, wrap_width=max_chars_per_line)
