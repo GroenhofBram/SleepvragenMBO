@@ -288,7 +288,7 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
-st.info("Laatste Update: 2026-06-29 - Feedbacktool toegevoegd")
+st.info("Laatste Update: 2026-09-14 - Lokale versie uitgerold, type 2 sleepvragen meer ruimte in de tabel om vakjes maken makkelijker te maken")
 
 manual_filename = "Nieuwe Itemtypes Handleiding Invoer TOM.docx"
 base_dir = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
