@@ -288,7 +288,7 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
-st.info("Laatste Update: 2026-09-22 - Voorbeelden bij feedbacktool toegevoegd")
+st.info("Laatste Update: 2026-09-22 - Voorbeelden bij FB-tool")
 
 manual_filename = "Nieuwe Itemtypes Handleiding Invoer TOM.docx"
 base_dir = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
@@ -592,7 +592,7 @@ elif mode == "Feedbacktool":
         texts = []
         for i in range(int(num_texts)):
             with st.expander(f"Tekst #{i+1}", expanded=(i == 0)):
-                cg = st.text_input(f"CG (bijv. 'CG5') voor tekst #{i+1}", key=f"ff_cg_{i}")
+                cg = st.text_input(f"CG (bijv. CG5 of vrij tekst) voor tekst #{i+1}", key=f"ff_cg_{i}")
                 vc_type = st.selectbox(f"VC type voor tekst #{i+1}", options=["2F", "3F"], key=f"ff_vc_{i}")
                 tekst_titel = st.text_input(f"Teksttitel voor tekst #{i+1}", key=f"ff_title_{i}")
                 soort = st.selectbox(f"Soort tekst/items voor tekst #{i+1}", options=["Checklist", "Items", "Bezem", "Anders"], key=f"ff_type_{i}")
